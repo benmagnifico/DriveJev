@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="assets/teaser.png" alt="DriveJev driving in JevPilot" width="90%">
+  <img src="assets/teaser.png" alt="Three DriveJev decisions: front camera, tele camera and behaviour probabilities" width="90%">
 </p>
 
 > [!IMPORTANT]
@@ -46,12 +46,13 @@ towns, cities and on the interstate, with traffic, pedestrians, traffic lights, 
 
 - 🚦 **The whole JevPilot world**, not one scripted junction: signals, stop signs (full stop + right of way), queues,
   turns, the interstate, and three hazard families (jaywalker, red-light runner, hard-braking lead) — 22/28 clean
-  test drives (82 % with AEB) against 4/28 for the earlier prototype.
+  test drives (95 % route completion, 99 % with AEB) against 4/28 for the earlier prototype.
 - 🎯 **A distribution, not free text.** Every decision is a probability over the behaviours that are executable
   at that instant; IDs never appear in the prompt and candidates are ordered canonically.
 - 🔁 **Closed-loop data.** A privileged world-rollout teacher labels states visited by the teacher *and* by the model
   itself (DAgger), so the model learns to recover from its own mistakes.
-- ⏱️ **Real time.** 133 ms median end-to-end per decision on one RTX 5090; in real-time runs 3.9 of the 4 decisions per second are applied while the world keeps moving.
+- ⏱️ **Real time.** 132 ms median end-to-end per decision on one RTX 5090; in real-time runs 3.9 of the 4 decisions
+  per second are applied while the world keeps moving.
 
 ## Results
 
@@ -63,14 +64,16 @@ no collision and no violation (red light, amber that could still be stopped for,
 | Policy | Inputs | Success ↑ | Collisions ↓ | Violations ↓ | Route done | Stuck s/ep ↓ | Mean speed m/s |
 |---|---|---|---|---|---|---|---|
 | Reference teacher (privileged, upper bound) | simulator truth + world rollouts | 96% <sub>[89, 100]</sub> (27/28) | 0 | 0 | 99% | 0.3 | 9.0 |
-| Earlier prototype (head trained on empty-road signal clips, original executor) | 2 wide frames + small state | 4% <sub>[0, 11]</sub> (1/28) | 12 | 38 | 70% | 9.3 | 7.9 |
+| Earlier prototype, no safety brake | 2 wide frames + small state | 4% <sub>[0, 11]</sub> (1/28) | 12 | 38 | 70% | 9.3 | 7.9 |
 | Earlier prototype + JevPilot safety brake | 2 wide frames + small state | 14% <sub>[4, 29]</sub> (4/28) | 0 | 51 | 91% | 18.3 | 6.8 |
 | State-only policy (no camera, same labels) | state JSON | 11% <sub>[0, 21]</sub> (3/28) | 4 | 51 | 88% | 8.1 | 7.1 |
-| DriveJev, no DAgger (round-1 data only) | 3 frames + state | 57% <sub>[39, 75]</sub> (16/28) | 0 | 6 | 84% | 24.0 | 6.3 |
-| DriveJev, linear pointer head | 3 frames + state | 86% <sub>[71, 96]</sub> (24/28) | 1 | 4 | 97% | 0.3 | 9.5 |
-| DriveJev + LoRA r16 on the language layers (not adopted) | 3 frames + state | 71% <sub>[54, 89]</sub> (20/28) | 4 | 4 | 90% | 0.2 | 9.4 |
-| **DriveJev (ours)** | 3 frames + state | 79% <sub>[61, 93]</sub> (22/28) | 3 | 8 | 94% | 0.5 | 9.3 |
-| DriveJev (ours) + AEB | 3 frames + state | 82% <sub>[68, 96]</sub> (23/28) | 1 | 11 | 99% | 0.6 | 9.1 |
+| DriveJev round 1 (no DAgger) | 3 frames + state | 57% <sub>[39, 75]</sub> (16/28) | 0 | 6 | 84% | 24.0 | 6.3 |
+| DriveJev round 3 (2 DAgger rounds) | 3 frames + state | 79% <sub>[61, 93]</sub> (22/28) | 3 | 8 | 94% | 0.5 | 9.3 |
+| DriveJev round 3, linear pointer head | 3 frames + state | 86% <sub>[71, 96]</sub> (24/28) | 1 | 4 | 97% | 0.3 | 9.5 |
+| DriveJev round 3 + LoRA r16 (not adopted) | 3 frames + state | 71% <sub>[54, 89]</sub> (20/28) | 4 | 4 | 90% | 0.2 | 9.4 |
+| **DriveJev (ours, round 4)** | 3 frames + state | 79% <sub>[61, 93]</sub> (22/28) | 2 | 5 | 95% | 0.3 | 9.4 |
+| DriveJev (ours) + AEB | 3 frames + state | 79% <sub>[61, 93]</sub> (22/28) | 1 | 6 | 99% | 0.2 | 9.3 |
+| DriveJev round 3 + AEB | 3 frames + state | 82% <sub>[68, 96]</sub> (23/28) | 1 | 11 | 99% | 0.6 | 9.1 |
 
 Per scenario (successes / episodes):
 
@@ -80,38 +83,45 @@ Per scenario (successes / episodes):
 | Earlier prototype, no safety brake | 0/8 | 1/8 | 0/5 | 0/5 | 0/2 |
 | Earlier prototype + JevPilot safety brake | 2/8 | 1/8 | 0/5 | 1/5 | 0/2 |
 | State-only policy (no camera, same labels) | 0/8 | 1/8 | 0/5 | 0/5 | 2/2 |
-| DriveJev, no DAgger (round-1 data only) | 5/8 | 5/8 | 1/5 | 3/5 | 2/2 |
-| DriveJev, linear pointer head | 6/8 | 8/8 | 4/5 | 4/5 | 2/2 |
-| DriveJev + LoRA r16 on the language layers (not adopted) | 7/8 | 6/8 | 2/5 | 3/5 | 2/2 |
-| **DriveJev (ours)** | 7/8 | 7/8 | 4/5 | 2/5 | 2/2 |
-| DriveJev (ours) + AEB | 7/8 | 7/8 | 4/5 | 3/5 | 2/2 |
+| DriveJev round 1 (no DAgger) | 5/8 | 5/8 | 1/5 | 3/5 | 2/2 |
+| DriveJev round 3 (2 DAgger rounds) | 7/8 | 7/8 | 4/5 | 2/5 | 2/2 |
+| DriveJev round 3, linear pointer head | 6/8 | 8/8 | 4/5 | 4/5 | 2/2 |
+| DriveJev round 3 + LoRA r16 (not adopted) | 7/8 | 6/8 | 2/5 | 3/5 | 2/2 |
+| **DriveJev (ours, round 4)** | 5/8 | 8/8 | 3/5 | 4/5 | 2/2 |
+| DriveJev (ours) + AEB | 6/8 | 7/8 | 4/5 | 3/5 | 2/2 |
+| DriveJev round 3 + AEB | 7/8 | 7/8 | 4/5 | 3/5 | 2/2 |
 
 - **From 4/28 to 22/28.** The earlier prototype (same frozen backbone; a head trained only on empty-road traffic-light
-  clips; the original executor without ACC or yielding) only finishes routes when JevPilot's own safety brake handles every vehicle; without it, it collides in 12 of 28
-  episodes. It also rolls through stop signs (26 front-bumper events) and waits up to 109 s at junctions.
+  clips; the original executor without ACC or yielding) only finishes routes when JevPilot's own safety brake handles
+  every vehicle; without it, it collides in 12 of 28 episodes. It also rolls through stop signs (26 front-bumper
+  events) and waits up to 109 s at junctions.
 - **Vision matters.** The same labels with the state JSON alone (no camera) give 3/28 and 51 violations: the signal
   phase and the start of a hazard are only visible in the images.
-- **DAgger matters.** Without the two rounds in which DriveJev drove and the teacher relabelled its states, the
-  model hesitates at served stop signs (24 s per episode "stuck"); with them, stuck time drops to the teacher's level.
-- **Head choice.** The released head (`pointer_mlp`) was chosen on the validation suite; on the test suite the
-  linear `pointer` head trained on the same data does as well or better (24/28 vs 22/28, overlapping intervals).
-- **LoRA.** Fine-tuning the language layers end to end (rank 16, 9 k decisions, initialised from the released head) did
-  not help in closed loop (validation 10/15 with more collisions; test 20/28), so DriveJev 1.0 keeps the backbone
+- **DAgger matters.** Without the rounds in which DriveJev drove and the teacher relabelled its states, the model
+  hesitates at served stop signs (24 s per episode "stuck"); with them, stuck time drops to the teacher's level.
+- **Model choice.** Every choice was made on validation seeds only (head type, DAgger round, LoRA). The released
+  round-4 head tied round 3 on the 30-episode validation suite (21/30) with fewer collisions + violations; on the
+  test suite both reach 22/28, round 4 with fewer collisions (2 vs 3) and violations (5 vs 8). The round-3 linear
+  head scores 24/28 on test — inside the same confidence interval.
+- **LoRA.** Fine-tuning the language layers end to end (rank 16, 9 k decisions, initialised from the round-3 head) did
+  not help in closed loop (validation tie with more collisions; test 20/28), so DriveJev 1.0 keeps the backbone
   frozen. `tools/export_hf.py --lora` merges such adapters when they do help.
-- **What is left.** Remaining failures are crossing on red/amber at 5–7 m/s after a late decision to stop, one rolled
-  stop sign (0.8 m/s), and red-light runners hidden by city buildings until ~11 m.
+- **What is left.** Remaining failures are crossing on red/amber at 4–10 m/s after a late decision to stop, contact
+  with a turning NPC car, and red-light runners that appear (often from behind city buildings) about one second
+  before the conflict.
 
-| Real-time closed loop (8 test episodes, 1 worker) | Success | Collisions | Violations | Applied decisions | Latency p50 / p95 |
-|---|---|---|---|---|---|
-| DriveJev (ours) | 6/8 | 0 | 5 | 3.94 Hz | 133 / 141 ms |
+| Real-time closed loop (8 test episodes, 1 worker) | Success | Collisions | Violations | Applied decisions | Latency p50 / p95 | Same 8 seeds, batch |
+|---|---|---|---|---|---|---|
+| DriveJev (ours, round 4) | 4/8 | 2 | 6 | 3.93 Hz | 132 / 140 ms | 5/8 |
+| DriveJev round 3 | 6/8 | 0 | 5 | 3.94 Hz | 133 / 141 ms | 7/8 |
 
-The same 8 seeds in the batch closed loop give 7/8. In real time the world never waits: physics follows the wall clock at 20 Hz, one request is in flight at a time,
+In real time the world never waits: physics follows the wall clock at 20 Hz, one request is in flight at a time,
 and answers whose observation is older than 0.5 s are dropped. Latency is measured end to end from the browser.
+Eight episodes are too few to separate the two models; both run at the full 4 Hz decision rate.
 
 > Offline agreement with the teacher on held-out validation states is ~98 % for every variant — including the
 > state-only ablation — because the current behaviour is part of the state and copying it is usually right. It does
 > not separate good from bad policies; all comparisons above are closed-loop.
-
 
 ## Models
 
@@ -171,7 +181,7 @@ record = {
                {"camera": "front_tele", "relative_time": 0, "path": "tele_t0.png"}],
 }
 out = policy.predict(record)
-print(out["candidate_id"], out["probabilities"])   # e.g. stop_at_line {'stop_at_line': 0.97, ...}
+print(out["candidate_id"], out["probabilities"])   # chosen behaviour + a probability for every offered one
 ```
 
 The HTTP service used by the simulator and the demo takes the same record with base64 PNGs:
@@ -200,7 +210,7 @@ worker for real-time runs so that measured latency is not inflated by other epis
 
 ## Live demo
 
-<p align="center"><img src="demo/screenshots/drivejev-city-hazard.png" alt="DriveJev yielding to a jaywalker in the JevPilot city demo" width="85%"><br><sub>Skyline City with hazards on: a pedestrian steps into the road and DriveJev chooses <i>yield</i> (96 %). The panel shows the model input (wide t, wide t−0.5 s, tele t), the state it read and the probability of every offered behaviour.</sub></p>
+<p align="center"><img src="demo/screenshots/drivejev-city-hazard.png" alt="DriveJev yielding to a jaywalker in the JevPilot city demo" width="85%"><br><sub>Skyline City with hazards on: a pedestrian steps into the road and DriveJev (round-3 head) chooses <i>yield</i> (96 %). The panel shows the model input (wide t, wide t−0.5 s, tele t), the state it read and the probability of every offered behaviour.</sub></p>
 
 ```bash
 DRIVEJEV_MODEL=benmagnifico/DriveJev-4B bash demo/start.sh      # model service :9031 + web app :9030

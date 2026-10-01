@@ -39,11 +39,13 @@ python eval/summarize.py runs/test-ours
 | Earlier prototype, no safety brake | 2 wide frames + small state | 4% <sub>[0, 11]</sub> (1/28) | 12 | 38 | 70% | 9.3 | 7.9 |
 | Earlier prototype + JevPilot safety brake | 2 wide frames + small state | 14% <sub>[4, 29]</sub> (4/28) | 0 | 51 | 91% | 18.3 | 6.8 |
 | State-only policy (no camera, same labels) | state JSON | 11% <sub>[0, 21]</sub> (3/28) | 4 | 51 | 88% | 8.1 | 7.1 |
-| DriveJev, no DAgger (round-1 data only) | 3 frames + state | 57% <sub>[39, 75]</sub> (16/28) | 0 | 6 | 84% | 24.0 | 6.3 |
-| DriveJev, linear pointer head | 3 frames + state | 86% <sub>[71, 96]</sub> (24/28) | 1 | 4 | 97% | 0.3 | 9.5 |
-| DriveJev + LoRA r16 on the language layers (not adopted) | 3 frames + state | 71% <sub>[54, 89]</sub> (20/28) | 4 | 4 | 90% | 0.2 | 9.4 |
-| **DriveJev (ours)** | 3 frames + state | 79% <sub>[61, 93]</sub> (22/28) | 3 | 8 | 94% | 0.5 | 9.3 |
-| DriveJev (ours) + AEB | 3 frames + state | 82% <sub>[68, 96]</sub> (23/28) | 1 | 11 | 99% | 0.6 | 9.1 |
+| DriveJev round 1 (no DAgger) | 3 frames + state | 57% <sub>[39, 75]</sub> (16/28) | 0 | 6 | 84% | 24.0 | 6.3 |
+| DriveJev round 3 (2 DAgger rounds) | 3 frames + state | 79% <sub>[61, 93]</sub> (22/28) | 3 | 8 | 94% | 0.5 | 9.3 |
+| DriveJev round 3, linear pointer head | 3 frames + state | 86% <sub>[71, 96]</sub> (24/28) | 1 | 4 | 97% | 0.3 | 9.5 |
+| DriveJev round 3 + LoRA r16 (not adopted) | 3 frames + state | 71% <sub>[54, 89]</sub> (20/28) | 4 | 4 | 90% | 0.2 | 9.4 |
+| **DriveJev (ours, round 4)** | 3 frames + state | 79% <sub>[61, 93]</sub> (22/28) | 2 | 5 | 95% | 0.3 | 9.4 |
+| DriveJev (ours) + AEB | 3 frames + state | 79% <sub>[61, 93]</sub> (22/28) | 1 | 6 | 99% | 0.2 | 9.3 |
+| DriveJev round 3 + AEB | 3 frames + state | 82% <sub>[68, 96]</sub> (23/28) | 1 | 11 | 99% | 0.6 | 9.1 |
 
 | Policy | town | city | town+hazards | city+hazards | highway |
 |---|---|---|---|---|---|
@@ -51,18 +53,22 @@ python eval/summarize.py runs/test-ours
 | Earlier prototype, no safety brake | 0/8 | 1/8 | 0/5 | 0/5 | 0/2 |
 | Earlier prototype + JevPilot safety brake | 2/8 | 1/8 | 0/5 | 1/5 | 0/2 |
 | State-only policy (no camera, same labels) | 0/8 | 1/8 | 0/5 | 0/5 | 2/2 |
-| DriveJev, no DAgger (round-1 data only) | 5/8 | 5/8 | 1/5 | 3/5 | 2/2 |
-| DriveJev, linear pointer head | 6/8 | 8/8 | 4/5 | 4/5 | 2/2 |
-| DriveJev + LoRA r16 on the language layers (not adopted) | 7/8 | 6/8 | 2/5 | 3/5 | 2/2 |
-| **DriveJev (ours)** | 7/8 | 7/8 | 4/5 | 2/5 | 2/2 |
-| DriveJev (ours) + AEB | 7/8 | 7/8 | 4/5 | 3/5 | 2/2 |
+| DriveJev round 1 (no DAgger) | 5/8 | 5/8 | 1/5 | 3/5 | 2/2 |
+| DriveJev round 3 (2 DAgger rounds) | 7/8 | 7/8 | 4/5 | 2/5 | 2/2 |
+| DriveJev round 3, linear pointer head | 6/8 | 8/8 | 4/5 | 4/5 | 2/2 |
+| DriveJev round 3 + LoRA r16 (not adopted) | 7/8 | 6/8 | 2/5 | 3/5 | 2/2 |
+| **DriveJev (ours, round 4)** | 5/8 | 8/8 | 3/5 | 4/5 | 2/2 |
+| DriveJev (ours) + AEB | 6/8 | 7/8 | 4/5 | 3/5 | 2/2 |
+| DriveJev round 3 + AEB | 7/8 | 7/8 | 4/5 | 3/5 | 2/2 |
 
-| Real-time closed loop (8 test episodes, 1 worker) | Success | Collisions | Violations | Applied decisions | Latency p50 / p95 |
-|---|---|---|---|---|---|
-| DriveJev (ours) | 6/8 | 0 | 5 | 3.94 Hz | 133 / 141 ms |
+| Real-time closed loop (8 test episodes, 1 worker) | Success | Collisions | Violations | Applied decisions | Latency p50 / p95 | Same 8 seeds, batch |
+|---|---|---|---|---|---|---|
+| DriveJev (ours, round 4) | 4/8 | 2 | 6 | 3.93 Hz | 132 / 140 ms | 5/8 |
+| DriveJev round 3 | 6/8 | 0 | 5 | 3.94 Hz | 133 / 141 ms | 7/8 |
 
-AEB was triggered 21 times over the 28 AEB-on episodes. "Earlier prototype + JevPilot safety brake" uses JevPilot's
-own speed envelope (following distance and swept-path conflict braking), the configuration of the original demo.
+AEB was triggered 23 times over the 28 AEB-on episodes of the released model. "Earlier prototype + JevPilot safety
+brake" uses JevPilot's own speed envelope (following distance and swept-path conflict braking), the configuration of
+the original demo.
 
 ## Validation suite (15 episodes) — the data used for every model decision
 
@@ -73,10 +79,20 @@ own speed envelope (following distance and swept-path conflict braking), the con
 | round 1, `pointer` | same | 7/15 | 0 | 9 | 5.2 | 87 % |
 | round 2, `pointer_mlp` | + hazard-dense + DAgger round 1 (53 k) | 10/15 | 2 | 3 | 0.9 | 73 % |
 | round 2, `pointer_mlp`, group decision rule | same | 9/15 | 2 | 5 | 0.4 | 80 % |
-| **round 3, `pointer_mlp` (released)** | + DAgger round 2 (60 k) | **10/15** | **1** | 4 | **0.3** | **87 %** |
+| round 3, `pointer_mlp` | + DAgger round 2 (60 k) | 10/15 | 1 | 4 | 0.3 | 87 % |
 | round 3, `pointer_mlp`, group decision rule | same | 9/15 | 1 | 5 | 0.4 | 87 % |
 | round 3 + LoRA r16 (language layers, 9 k decisions, from the released head) | same | 10/15 | 2 | 3 | 0.3 | 80 % |
 | state-only (no camera) | round-1 data | 2/15 | 3 | 32 | 0.1 | 73 % |
+
+30-episode validation suite (the 15 episodes above + seeds 311015–311029), used to choose the round-4 model:
+
+| Model | Data | Success | Collisions | Violations |
+|---|---|---|---|---|
+| round 3, `pointer_mlp` | 60 k labels | 21/30 | 1 | 10 |
+| **round 4, `pointer_mlp` (released)** | + DAgger round 3 (68 k) | **21/30** | **0** | **8** |
+| round 4, `pointer` | same | 21/30 | 1 | 9 |
+
+Rule fixed before the run: most successes, then fewest collisions + violations, then keep the incumbent.
 
 The LoRA variant was to be adopted only if it beat round 3 on validation (more successes, or equal successes with
 fewer collisions + violations); it tied (10/15, 5 vs 5), so it was not adopted. Its single test run is reported as an
