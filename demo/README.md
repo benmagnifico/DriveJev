@@ -5,9 +5,10 @@ with traffic, pedestrians, traffic lights, stop signs and optional scripted haza
 and watch every decision live: what the model saw, which behaviours it was offered, the probability it gave each
 one, and whether the executor applied the answer.
 
-<p align="center"><img src="screenshots/teacher-city-jaywalker.png" alt="The demo in the JevPilot city: the reference teacher yields to a pedestrian about to cross" width="90%"><br>
-<sub>Skyline City with hazards on: a pedestrian is about to step out, and the pilot yields. The panel on the left lists the
-student state and the probability of every behaviour on offer.</sub></p>
+<p align="center"><img src="screenshots/drivejev-city-hazard.png" alt="DriveJev yielding to a pedestrian crossing in front of it in the JevPilot city" width="90%"><br>
+<sub>Skyline City with hazards on: a pedestrian steps into the road and DriveJev chooses <i>Yield</i> (96 %), slowing to
+23 km/h. The panel shows the model input — wide frames at t and t−0.5 s and the tele frame (the pedestrian is clearest in
+the tele view) — the student state with the predicted conflict, and the probability of every offered behaviour.</sub></p>
 
 ## Start
 
@@ -71,6 +72,10 @@ A pilot that is not available says why in the menu (model service offline, head 
 not configured, Kev not running).
 
 ## What the panel shows
+
+<p align="center"><img src="screenshots/drivejev-town.png" alt="DriveJev holding at a red light in the JevPilot town" width="80%"><br>
+<sub>Small town: DriveJev holds 0.6 m before the stop line of a red light (<i>Hold stop</i> 100 %); the light is visible
+in the wide and tele frames, and the latest answer arrived 300 ms after its frames were captured.</sub></p>
 
 - **Model input** — the wide frame at t, with the wide frame at t−0.5 s and the tele frame side by side below it
   (a live preview of the same cameras before you engage), and the **student state** the model reads as text: speed and

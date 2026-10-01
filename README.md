@@ -195,7 +195,7 @@ worker for real-time runs so that measured latency is not inflated by other epis
 
 ## Live demo
 
-<p align="center"><img src="demo/screenshots/teacher-city-jaywalker.png" alt="JevPilot demo with the decision panel" width="85%"></p>
+<p align="center"><img src="demo/screenshots/drivejev-city-hazard.png" alt="DriveJev yielding to a jaywalker in the JevPilot city demo" width="85%"><br><sub>Skyline City with hazards on: a pedestrian steps into the road and DriveJev chooses <i>yield</i> (96 %). The panel shows the model input (wide t, wide t−0.5 s, tele t), the state it read and the probability of every offered behaviour.</sub></p>
 
 ```bash
 DRIVEJEV_MODEL=benmagnifico/DriveJev-4B bash demo/start.sh      # model service :9031 + web app :9030
