@@ -41,6 +41,7 @@ python eval/summarize.py runs/test-ours
 | State-only policy (no camera, same labels) | state JSON | 11% <sub>[0, 21]</sub> (3/28) | 4 | 51 | 88% | 8.1 | 7.1 |
 | DriveJev, no DAgger (round-1 data only) | 3 frames + state | 57% <sub>[39, 75]</sub> (16/28) | 0 | 6 | 84% | 24.0 | 6.3 |
 | DriveJev, linear pointer head | 3 frames + state | 86% <sub>[71, 96]</sub> (24/28) | 1 | 4 | 97% | 0.3 | 9.5 |
+| DriveJev + LoRA r16 on the language layers (not adopted) | 3 frames + state | 71% <sub>[54, 89]</sub> (20/28) | 4 | 4 | 90% | 0.2 | 9.4 |
 | **DriveJev (ours)** | 3 frames + state | 79% <sub>[61, 93]</sub> (22/28) | 3 | 8 | 94% | 0.5 | 9.3 |
 | DriveJev (ours) + AEB | 3 frames + state | 82% <sub>[68, 96]</sub> (23/28) | 1 | 11 | 99% | 0.6 | 9.1 |
 
@@ -52,6 +53,7 @@ python eval/summarize.py runs/test-ours
 | State-only policy (no camera, same labels) | 0/8 | 1/8 | 0/5 | 0/5 | 2/2 |
 | DriveJev, no DAgger (round-1 data only) | 5/8 | 5/8 | 1/5 | 3/5 | 2/2 |
 | DriveJev, linear pointer head | 6/8 | 8/8 | 4/5 | 4/5 | 2/2 |
+| DriveJev + LoRA r16 on the language layers (not adopted) | 7/8 | 6/8 | 2/5 | 3/5 | 2/2 |
 | **DriveJev (ours)** | 7/8 | 7/8 | 4/5 | 2/5 | 2/2 |
 | DriveJev (ours) + AEB | 7/8 | 7/8 | 4/5 | 3/5 | 2/2 |
 
@@ -73,9 +75,12 @@ own speed envelope (following distance and swept-path conflict braking), the con
 | round 2, `pointer_mlp`, group decision rule | same | 9/15 | 2 | 5 | 0.4 | 80 % |
 | **round 3, `pointer_mlp` (released)** | + DAgger round 2 (60 k) | **10/15** | **1** | 4 | **0.3** | **87 %** |
 | round 3, `pointer_mlp`, group decision rule | same | 9/15 | 1 | 5 | 0.4 | 87 % |
+| round 3 + LoRA r16 (language layers, 9 k decisions, from the released head) | same | 10/15 | 2 | 3 | 0.3 | 80 % |
 | state-only (no camera) | round-1 data | 2/15 | 3 | 32 | 0.1 | 73 % |
 
-The validation timeout is 100 s, which is why even the teacher misses some long hazard episodes.
+The LoRA variant was to be adopted only if it beat round 3 on validation (more successes, or equal successes with
+fewer collisions + violations); it tied (10/15, 5 vs 5), so it was not adopted. Its single test run is reported as an
+ablation. The validation timeout is 100 s, which is why even the teacher misses some long hazard episodes.
 
 ## Offline agreement
 

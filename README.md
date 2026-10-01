@@ -16,8 +16,8 @@
 > [!IMPORTANT]
 > **News**
 > - **[2026/10]** DriveJev 1.0: inference code, the JevPilot closed-loop harness with hazard scenarios, the live demo
->   and the evaluation suites are released. Weights will be published on Hugging Face (LoRA merged into the
->   backbone, decision head alongside). The training pipeline will be released later.
+>   and the evaluation suites are released. Weights will be published on Hugging Face as one folder (backbone with any
+>   LoRA merged in, plus the decision head). The training pipeline will be released later.
 
 ## Introduction
 
@@ -68,6 +68,7 @@ no collision and no violation (red light, amber that could still be stopped for,
 | State-only policy (no camera, same labels) | state JSON | 11% <sub>[0, 21]</sub> (3/28) | 4 | 51 | 88% | 8.1 | 7.1 |
 | DriveJev, no DAgger (round-1 data only) | 3 frames + state | 57% <sub>[39, 75]</sub> (16/28) | 0 | 6 | 84% | 24.0 | 6.3 |
 | DriveJev, linear pointer head | 3 frames + state | 86% <sub>[71, 96]</sub> (24/28) | 1 | 4 | 97% | 0.3 | 9.5 |
+| DriveJev + LoRA r16 on the language layers (not adopted) | 3 frames + state | 71% <sub>[54, 89]</sub> (20/28) | 4 | 4 | 90% | 0.2 | 9.4 |
 | **DriveJev (ours)** | 3 frames + state | 79% <sub>[61, 93]</sub> (22/28) | 3 | 8 | 94% | 0.5 | 9.3 |
 | DriveJev (ours) + AEB | 3 frames + state | 82% <sub>[68, 96]</sub> (23/28) | 1 | 11 | 99% | 0.6 | 9.1 |
 
@@ -81,6 +82,7 @@ Per scenario (successes / episodes):
 | State-only policy (no camera, same labels) | 0/8 | 1/8 | 0/5 | 0/5 | 2/2 |
 | DriveJev, no DAgger (round-1 data only) | 5/8 | 5/8 | 1/5 | 3/5 | 2/2 |
 | DriveJev, linear pointer head | 6/8 | 8/8 | 4/5 | 4/5 | 2/2 |
+| DriveJev + LoRA r16 on the language layers (not adopted) | 7/8 | 6/8 | 2/5 | 3/5 | 2/2 |
 | **DriveJev (ours)** | 7/8 | 7/8 | 4/5 | 2/5 | 2/2 |
 | DriveJev (ours) + AEB | 7/8 | 7/8 | 4/5 | 3/5 | 2/2 |
 
@@ -93,6 +95,9 @@ Per scenario (successes / episodes):
   model hesitates at served stop signs (24 s per episode "stuck"); with them, stuck time drops to the teacher's level.
 - **Head choice.** The released head (`pointer_mlp`) was chosen on the validation suite; on the test suite the
   linear `pointer` head trained on the same data does as well or better (24/28 vs 22/28, overlapping intervals).
+- **LoRA.** Fine-tuning the language layers end to end (rank 16, 9 k decisions, initialised from the released head) did
+  not help in closed loop (validation 10/15 with more collisions; test 20/28), so DriveJev 1.0 keeps the backbone
+  frozen. `tools/export_hf.py --lora` merges such adapters when they do help.
 - **What is left.** Remaining failures are crossing on red/amber at 5–7 m/s after a late decision to stop, one rolled
   stop sign (0.8 m/s), and red-light runners hidden by city buildings until ~11 m.
 
