@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="description" content="DriveJev demo: drive the JevPilot world with DriveJev, the reference teacher, Kev or cloud Jev, and watch each decision live." />
+    <title>DriveJev demo</title>
+    <link rel="icon" type="image/svg+xml" href="/demo/brand.svg" />
+    <script type="importmap">{"imports":{"three":"/vendor/three/build/three.module.js","three/addons/":"/vendor/three/examples/jsm/"}}</script>
+    <link rel="stylesheet" href="/third_party/jevpilot/src/style.css" />
+    <link rel="stylesheet" href="/demo/pilot.css" />
+    <style>
+      #scene-loader {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: grid;
+        place-content: center;
+        justify-items: center;
+        gap: 16px;
+        background: #f5f6f8;
+        color: #171a20;
+        font:
+          14px system-ui,
+          sans-serif;
+        text-align: center;
+        padding: 24px;
+      }
+      #scene-loader[hidden],
+      #scene-loader [hidden] {
+        display: none;
+      }
+      #scene-loader img {
+        width: 40px;
+        height: 40px;
+      }
+      #scene-loader strong {
+        font-size: 20px;
+        font-weight: 600;
+      }
+      #scene-loader p {
+        margin: 0;
+        color: #737985;
+      }
+      .loading-spinner {
+        width: 22px;
+        height: 22px;
+        border: 2px solid #dfe2e6;
+        border-top-color: #171a20;
+        border-radius: 50%;
+        animation: loading-spin 0.9s linear infinite;
+      }
+      #loading-retry {
+        border: 0;
+        border-radius: 8px;
+        padding: 12px 18px;
+        background: #171a20;
+        color: white;
+        cursor: pointer;
+      }
+      @keyframes loading-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .loading-spinner {
+          animation: none;
+        }
+      }
+    </style>
+  </head>
+  <body class="loading">
+    <div id="scene-loader" role="status" aria-live="polite">
+      <img src="/demo/brand.svg" alt="" />
+      <strong>Getting your drive ready</strong>
+      <p id="loading-message">Loading the DriveJev demo…</p>
+      <span class="loading-spinner" aria-hidden="true"></span>
+      <button id="loading-retry" hidden>Try again</button>
+    </div>
+    <div id="app" inert aria-busy="true"></div>
+    <script type="module" src="/demo/bootstrap.js"></script>
+  </body>
+</html>

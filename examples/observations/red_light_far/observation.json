@@ -1,0 +1,104 @@
+{
+ "student_obs": {
+  "ego": {
+   "speed_mps": 14,
+   "acceleration_mps2": 0,
+   "steering": 0,
+   "route_offset_m": 0,
+   "heading_error_deg": 0,
+   "stationary_s": 0
+  },
+  "nav": {
+   "remaining_m": 590.7,
+   "next_turn": "right",
+   "turn_distance_m": 80.7,
+   "speed_limit_mps": 14,
+   "junction_control": "signal",
+   "stop_line_ahead_m": 68.3,
+   "stop_completed": false
+  },
+  "maneuver": {
+   "action_type": "stop_at_line",
+   "target_id": "j0-2",
+   "elapsed_s": 1,
+   "progress_m": 14,
+   "status": "active",
+   "feedback": []
+  },
+  "recent_actions": [
+   {
+    "action_type": "proceed_route",
+    "age_s": 4.7
+   },
+   {
+    "action_type": "keep_route_cruise",
+    "age_s": 4.5
+   },
+   {
+    "action_type": "stop_at_line",
+    "age_s": 1
+   }
+  ],
+  "traffic": {
+   "lead": null,
+   "hazard": null,
+   "junction": null
+  }
+ },
+ "candidates": [
+  {
+   "candidate_id": "keep_route_cruise",
+   "action_type": "keep_route_cruise",
+   "target_id": null,
+   "speed_profile": "cruise",
+   "description": "Follow the navigation route at the road speed limit, keeping a safe gap to the vehicle ahead."
+  },
+  {
+   "candidate_id": "stop_at_line",
+   "action_type": "stop_at_line",
+   "target_id": "j0-2",
+   "speed_profile": "line_stop",
+   "description": "Approach and stop with the front bumper 0.5 m before the current stop line."
+  },
+  {
+   "candidate_id": "continue_current",
+   "action_type": "continue_current",
+   "target_id": "j0-2",
+   "speed_profile": "retain",
+   "description": "Continue the current maneuver with its fixed target."
+  },
+  {
+   "candidate_id": "emergency_brake",
+   "action_type": "emergency_brake",
+   "target_id": null,
+   "speed_profile": "maximum_brake",
+   "description": "Apply maximum braking immediately in the current lane."
+  }
+ ],
+ "images": [
+  {
+   "camera": "front",
+   "relative_time": -0.5,
+   "path": "front_t-0.5.png"
+  },
+  {
+   "camera": "front",
+   "relative_time": 0,
+   "path": "front_t0.png"
+  },
+  {
+   "camera": "front_tele",
+   "relative_time": 0,
+   "path": "tele_t0.png"
+  }
+ ],
+ "reference_teacher": {
+  "preferred": "stop_at_line",
+  "probabilities": {
+   "keep_route_cruise": 0,
+   "stop_at_line": 0.5,
+   "continue_current": 0.5,
+   "emergency_brake": 0
+  }
+ }
+}

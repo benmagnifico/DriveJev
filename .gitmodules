@@ -1,0 +1,3 @@
+[submodule "third_party/jevpilot"]
+	path = third_party/jevpilot
+	url = https://github.com/standardagents/jevpilot

@@ -216,3 +216,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# DriveJev
+runs/
+demo/runtime/
+*.pt
+*.safetensors
+node_modules/
+!demo/vendor/lucide/dist/
