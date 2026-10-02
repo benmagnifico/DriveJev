@@ -1017,8 +1017,10 @@ function previewCamera() {
   if (!isModelPilot(pilot) || sim.autopilot || engaging || !sensor.scene || sensor.world !== sim.world || sensor.scene.sim !== sim) return;
   if (performance.now() - lastCameraPreview < 400 || $("decision-panel").hidden) return;
   lastCameraPreview = performance.now();
-  const shot = sensor.capture(sim);
-  panel.showPreview(shot.dataUrl, shot.tele.dataUrl);
+  sensor
+    .capture(sim)
+    .then((shot) => panel.showPreview(shot.dataUrl, shot.tele.dataUrl))
+    .catch((error) => console.warn("Sensor camera unavailable", error));
 }
 function updateSemanticStatus() {
   const v = sim.player,

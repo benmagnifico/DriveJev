@@ -9,6 +9,36 @@
   📄 <a href="docs/evaluation.md">Evaluation</a>
 </p>
 
+<table>
+  <tr>
+    <td align="center" width="33%"><a href="assets/demo/drivejev-oncoming.mp4"><img src="assets/demo/drivejev-oncoming.jpg" alt="DriveJev holding at the line on green while an oncoming car turns left across its path"></a></td>
+    <td align="center" width="33%"><a href="assets/demo/drivejev-4way-stop.mp4"><img src="assets/demo/drivejev-4way-stop.jpg" alt="DriveJev waiting at a 4-way stop while three cars take their turn"></a></td>
+    <td align="center" width="33%"><a href="assets/demo/drivejev-green-runner.mp4"><img src="assets/demo/drivejev-green-runner.jpg" alt="DriveJev braking at the line for a car that runs its red just after the ego's green"></a></td>
+  </tr>
+  <tr>
+    <td valign="top"><sub><b>Oncoming left-turner</b> — the light turns green, but an oncoming car turns left across its path; DriveJev holds at the line until it has cleared.</sub></td>
+    <td valign="top"><sub><b>4-way stop</b> — three cars arrive; DriveJev comes to a full stop, waits while all three take their turn, then turns right.</sub></td>
+    <td valign="top"><sub><b>Red-light runner after the green</b> — DriveJev moves off on green, a car runs its red from the left; it brakes at the line (68 %) and lets it pass.</sub></td>
+  </tr>
+  <tr>
+    <td align="center" width="33%"><a href="assets/demo/drivejev-hidden-pedestrian.mp4"><img src="assets/demo/drivejev-hidden-pedestrian.jpg" alt="DriveJev yielding to a pedestrian stepping out from behind a parked car"></a></td>
+    <td align="center" width="33%"><a href="assets/demo/drivejev-turn-pedestrians.mp4"><img src="assets/demo/drivejev-turn-pedestrians.jpg" alt="DriveJev stopping mid-turn for two pedestrians on the exit crosswalk"></a></td>
+    <td align="center" width="33%"><a href="assets/demo/drivejev-cut-in.mp4"><img src="assets/demo/drivejev-cut-in.jpg" alt="DriveJev yielding to a car that cuts in on the interstate"></a></td>
+  </tr>
+  <tr>
+    <td valign="top"><sub><b>Pedestrian behind a parked car</b> — warned of a hidden pedestrian, DriveJev yields (100 %), stops as the pedestrian steps out, then drives on.</sub></td>
+    <td valign="top"><sub><b>Pedestrians at the turn exit</b> — halfway through a left turn, DriveJev stops for two pedestrians on the exit crosswalk (yield 98 %), then completes the turn.</sub></td>
+    <td valign="top"><sub><b>Cut-ins on the interstate</b> — three cars cut in within 20 s; DriveJev yields as the red one brakes in front of it and keeps its gap (98 → 40 km/h).</sub></td>
+  </tr>
+</table>
+
+<p align="center"><sub>DriveJev 1.0 in the <a href="demo/">live demo</a> with JevPilot's normal traffic, AEB off and one interaction kind per drive
+(<code>hazards=&lt;kind&gt;</code>; on the interstate <code>hazards=storm</code>, i.e. back-to-back cut-ins). Each full drive reached its destination
+with no collision and no violation (seeds 7402, 7504, 7602, 7701, 7903, 7303). Of the 14 urban drives recorded for these clips, 11 met their
+interaction — 10 cleanly, one crossed a red light at walking pace while yielding to a pedestrian at the turn exit — and 3 never did (no suitable
+junction on the route); of the 5 interstate drives, one hit a car cutting in at 100 km/h. Recorded frame by frame in batch closed loop — the world
+waits for each 4 Hz decision, as in the evaluation tables. Click a clip for the 720p video.</sub></p>
+
 <p align="center">
   <img src="assets/teaser_interactions.png" alt="Three DriveJev 1.0 interaction decisions: front camera, tele camera and behaviour probabilities" width="90%">
 </p>

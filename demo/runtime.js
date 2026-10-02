@@ -95,8 +95,19 @@ export class SensorRig {
     const { wide, tele } = CAMERA;
     this.wideCamera = new THREE.PerspectiveCamera(wide.vfov, wide.width / wide.height, 0.1, 600);
     this.teleCamera = new THREE.PerspectiveCamera(tele.vfov, tele.width / tele.height, 0.5, 900);
-    this.tele2d = Object.assign(document.createElement("canvas"), { width: tele.width, height: tele.height });
-    this.teleCtx = this.tele2d.getContext("2d");
+    // One PNG worker per view, so the wide and tele frames are encoded in parallel.
+    this.encodes = new Map();
+    this.encodeId = 0;
+    this.encoders = [0, 1].map(() => {
+      const worker = new Worker(new URL("./png-worker.js", import.meta.url));
+      worker.onmessage = ({ data }) => {
+        const pending = this.encodes.get(data.id);
+        this.encodes.delete(data.id);
+        if (data.error) pending.reject(Error(data.error));
+        else pending.resolve(data.urls[0]);
+      };
+      return worker;
+    });
     this.scene = null;
     this.world = null;
     this.ready = Promise.resolve();
@@ -135,8 +146,11 @@ export class SensorRig {
   }
   /**
    * Same sequence as simulator/harness.mjs capture(): update, hide the ego car and annotations,
-   * render the wide view to PNG, render the tele view into the bottom-left 384x224 sub-viewport,
-   * crop it through a 2D canvas, restore the viewport.
+   * render the wide view, render the tele view into the bottom-left 384x224 sub-viewport and crop it,
+   * restore the viewport. Each view is snapshotted (ImageBitmap) right after it is drawn and encoded to
+   * PNG in a worker: synchronous toDataURL() calls cost ~20 ms of main-thread time per slot and made the
+   * display stutter at 4 Hz. PNG is lossless, so the decoded pixels are the ones the harness produces.
+   * Returns a promise of { dataUrl, png_base64, tele: { dataUrl, png_base64 }, capture_ms }.
    */
   capture(sim) {
     const scene = this.scene,
@@ -154,18 +168,32 @@ export class SensorRig {
     r.setScissorTest(false);
     r.setViewport(0, 0, W.width, W.height);
     r.render(scene.scene, this.wideCamera);
-    const wide = this.canvas.toDataURL("image/png");
+    const wide = createImageBitmap(this.canvas);
     aim(this.teleCamera, v, T.pitch);
     r.setViewport(0, 0, T.width, T.height);
     r.setScissor(0, 0, T.width, T.height);
     r.setScissorTest(true);
     r.render(scene.scene, this.teleCamera);
-    this.teleCtx.drawImage(this.canvas, 0, W.height - T.height, T.width, T.height, 0, 0, T.width, T.height);
-    const tele = this.tele2d.toDataURL("image/png");
+    const tele = createImageBitmap(this.canvas, 0, W.height - T.height, T.width, T.height);
     r.setScissorTest(false);
     r.setViewport(0, 0, W.width, W.height);
     scene.player.visible = true;
-    return { dataUrl: wide, png_base64: b64(wide), tele: { dataUrl: tele, png_base64: b64(tele) }, capture_ms: performance.now() - started };
+    const capture_ms = performance.now() - started;
+    return Promise.all([wide, tele])
+      .then((bitmaps) => this.encode(bitmaps))
+      .then(([wideUrl, teleUrl]) => ({ dataUrl: wideUrl, png_base64: b64(wideUrl), tele: { dataUrl: teleUrl, png_base64: b64(teleUrl) }, capture_ms, encoded_ms: performance.now() - started }));
+  }
+  encode(bitmaps) {
+    return Promise.all(
+      bitmaps.map(
+        (bitmap, i) =>
+          new Promise((resolve, reject) => {
+            const id = ++this.encodeId;
+            this.encodes.set(id, { resolve, reject });
+            this.encoders[i % this.encoders.length].postMessage({ id, bitmaps: [bitmap] }, [bitmap]);
+          }),
+      ),
+    );
   }
 }
 
@@ -314,19 +342,28 @@ export class SemanticRuntime {
     if (!executor || sim.crash || sim.complete) return;
     const row = executor.observe();
     if (isTeacherPilot(this.pilot)) return this.teach(row);
-    const shot = this.sensor.capture(sim);
-    const frame = { step_id: executor.stepId, sim_time: sim.time, observation_id: row.observation_id, ...shot };
+    // The views are snapshotted now; the frame is filled in once the worker has encoded them.
+    const generation = this.generation;
+    const frame = { step_id: executor.stepId, sim_time: sim.time, observation_id: row.observation_id };
+    frame.ready = this.sensor.capture(sim).then((shot) => Object.assign(frame, shot));
     this.frames.push(frame);
     if (this.frames.length > 12) this.frames.shift();
     const history = this.frames.find((f) => f.step_id === frame.step_id - HISTORY_STEPS) ?? null;
-    this.onFrame?.(frame, history);
     this.preview(row, this.lastDecision);
-    if (!history) return; // still inside the 0.5 s bootstrap
-    if (this.inflight) {
-      this.stats.skipped_busy++; // the world keeps moving; only the newest frame is ever sent
-      return;
-    }
-    this.request(row, frame, history);
+    const send = history && !this.inflight;
+    if (history && this.inflight) this.stats.skipped_busy++; // the world keeps moving; only the newest frame is ever sent
+    if (send) this.inflight = row.observation_id; // reserved while the frame is encoded
+    Promise.all([frame.ready, history?.ready])
+      .then(() => {
+        if (generation !== this.generation) return;
+        this.onFrame?.(frame, history);
+        if (send) this.request(row, frame, history);
+      })
+      .catch((error) => {
+        if (generation !== this.generation) return;
+        if (send) this.inflight = null;
+        this.onError?.(error, ++this.errors);
+      });
   }
   preview(row, decision) {
     const executor = this.executor;
