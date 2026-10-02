@@ -96,10 +96,9 @@ def load_image(image, root=None):
 class DriveCompiler:
     def __init__(self, model_path, max_tokens=2048, image_root=None, image_mode="normal"):
         from transformers import AutoTokenizer
-        from qwen_drive import QwenDriveConfig, QwenDriveProcessor
-        self.config = QwenDriveConfig.from_pretrained(model_path)
+        from .vision import ImagePatcher
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
-        self.processor = QwenDriveProcessor(self.tokenizer, self.config)
+        self.processor = ImagePatcher(model_path, self.tokenizer)
         self.max_tokens = max_tokens
         self.image_root = image_root
         if image_mode not in {"normal", "blank", "no_tele"}:
@@ -111,7 +110,6 @@ class DriveCompiler:
 
     def compile_record(self, record):
         from PIL import Image
-        from qwen_drive import CameraFrame
         p = self.processor
         candidates, layout = canonicalize(record["candidates"])
         ids = [str(c["candidate_id"]) for c in candidates]
@@ -131,7 +129,7 @@ class DriveCompiler:
             else:
                 pil, digest = load_image(image, self.image_root)
             hashes.append(digest)
-            patch, (rows, cols) = p._patchify(CameraFrame(pil, target_size=size), self.config.current_image_pixels)
+            patch, (rows, cols) = p.patchify(pil, size)
             count = rows * cols // p.merge_size ** 2
             prompt += self._encode(f"{label} relative_time={float(image.get('relative_time', 0)):g}s\n")
             prompt += [p.vision_start_id] + [p.image_token_id] * count + [p.vision_end_id]
