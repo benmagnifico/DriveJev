@@ -26,7 +26,77 @@ node simulator/run.mjs --jobs eval/suites/interaction_test.json --out runs/itest
 python eval/summarize.py runs/itest runs/itest-teacher
 ```
 
-<!-- INTERACTION_RESULTS -->
+### Test suite (35 episodes, batch closed loop unless stated)
+
+| Policy | Inputs | Success ↑ | Collisions ↓ (with hazard agent) | Violations ↓ | Route done | Stuck s/ep ↓ | Mean speed m/s |
+|---|---|---|---|---|---|---|---|
+| Observable teacher (privileged, upper bound) | simulator truth + rollouts of perceived agents | 97% <sub>[91, 100]</sub> (34/35) | 0 (0) | 0 | 99% | 0.5 | 7.6 |
+| DriveJev 1.0 (no interaction training) | 3 frames + 1.0 state | 29% <sub>[14, 43]</sub> (10/35) | 24 (24) | 8 | 61% | 0.1 | 9.1 |
+| DriveJev 1.1, interaction teacher data only (no new DAgger) | 3 frames + 1.1 state | 54% <sub>[37, 71]</sub> (19/35) | 12 (12) | 9 | 84% | 0.7 | 8.1 |
+| **DriveJev 1.1 (ours, h5c)** | 3 frames + 1.1 state | 80% <sub>[66, 91]</sub> (28/35) | 1 (1) | 4 | 97% | 3.7 | 7.1 |
+| DriveJev 1.1 (ours) + AEB | 3 frames + 1.1 state | 80% <sub>[66, 91]</sub> (28/35) | 1 (1) | 3 | 96% | 3.7 | 7.0 |
+
+Per family (successes / episodes):
+
+| Policy | town+interaction | city+interaction | town+storm | city+storm | highway |
+|---|---|---|---|---|---|
+| Observable teacher (privileged, upper bound) | 12/12 | 11/11 | 4/4 | 3/4 | 4/4 |
+| DriveJev 1.0 (no interaction training) | 4/12 | 2/11 | 0/4 | 0/4 | 4/4 |
+| DriveJev 1.1, interaction teacher data only (no new DAgger) | 7/12 | 6/11 | 1/4 | 1/4 | 4/4 |
+| **DriveJev 1.1 (ours, h5c)** | 11/12 | 8/11 | 3/4 | 2/4 | 4/4 |
+| DriveJev 1.1 (ours) + AEB | 11/12 | 9/11 | 2/4 | 2/4 | 4/4 |
+
+Collisions per hazard kind (episodes ending in contact with that hazard agent / activations of that kind; episodes end
+at the first collision, so a policy that crashes early meets fewer hazards):
+
+| Policy | oncoming | stop_contention | green_runner | occluded_ped | cut_in | turn_ped | jaywalker | cross_runner | lead_brake |
+|---|---|---|---|---|---|---|---|---|---|
+| Observable teacher (privileged, upper bound) | 0/23 | 0/9 | 0/8 | 0/26 | 0/24 | 0/22 | 0/91 | 0/12 | 0/27 |
+| DriveJev 1.0 (no interaction training) | 3/8 | 0/6 | 0/5 | 10/22 | 6/20 | 0/9 | 4/44 | 1/5 | 0/15 |
+| DriveJev 1.1, interaction teacher data only (no new DAgger) | 3/12 | 0/9 | 0/6 | 2/32 | 5/23 | 0/22 | 2/67 | 0/7 | 0/21 |
+| **DriveJev 1.1 (ours, h5c)** | 0/16 | 0/9 | 0/6 | 0/25 | 0/24 | 1/25 | 0/92 | 0/13 | 0/32 |
+| DriveJev 1.1 (ours) + AEB | 0/19 | 0/7 | 0/5 | 0/25 | 0/24 | 1/28 | 0/91 | 0/11 | 0/33 |
+
+| Real-time closed loop (8 interaction test episodes, 1 worker) | Success | Collisions | Violations | Applied decisions | Latency p50 / p95 | Same 8 seeds, batch |
+|---|---|---|---|---|---|---|
+| DriveJev 1.1 (h5c) | 4/8 | 2 | 2 | 3.86 Hz | 137 / 143 ms | 5/8 |
+
+Remaining test failures of DriveJev 1.1 (7 of 35): three amber crossings at 0.8–4.4 m/s (the light changes while the
+car creeps up to the line), one red-light count for a car whose front had crossed on green but which crawled over the
+line until it turned red, two time-outs in dense episodes after long waits, and one pedestrian at a turn exit walking
+into the stationary car. In real time the two `storm` crashes (a cut-in and a jaywalker four seconds apart from other
+hazards) show what one extra decision of delay costs when hazards come back to back.
+
+### Validation suite (24 episodes) — the data used for every 1.1 model decision
+
+| Validation (24 interaction episodes) | Success | Collisions | Violations | Route done | Stuck s/ep |
+|---|---|---|---|---|---|
+| Observable teacher | 24/24 | 0 | 0 | 100% | 0.6 |
+| DriveJev 1.0 (h4) | 10/24 | 14 | 2 | 69% | 0.2 |
+| h5a: + interaction teacher data | 15/24 | 6 | 3 | 81% | 2.6 |
+| h5a-cw: + conflict weighting | 15/24 | 0 | 7 | 83% | 21.4 |
+| h5b: + DAgger round 1 (epoch by accuracy) | 15/24 | 3 | 11 | 92% | 7.3 |
+| h5b-loss: same data, epoch by loss | 16/24 | 3 | 8 | 93% | 4.2 |
+| h5c: + DAgger round 2 | 19/24 | 2 | 5 | 98% | 2.3 |
+
+* **h5a**: the 1.0 data plus 164 teacher-driven interaction episodes (half with 5 % of decision slots perturbed for 1 s).
+* **h5a-cw**: the same data with decisions that the teacher changed because of a predicted interaction conflict
+  (wait for a gap, yield, brake: reason `conflict:*`, or a line stop that had to become a yield / brake) weighted ×3.
+* **h5b / h5b-loss**: + DAgger round 1 (h5a drives 64 training episodes, the observable teacher labels every slot,
+  weight ×2), conflict weighting. h5b picked its epoch by the 1.0 rule (offline acceptable accuracy − 0.2 × false-go
+  rate), which chose an epoch before the learning rate had annealed; h5b-loss picks the epoch with the lowest offline
+  validation loss. This change was made after seeing part of h5b's validation run; the test suite was not involved.
+* **h5c (released)**: + DAgger round 2 (h5b drives 70 training episodes, 24 of them focused on oncoming platoons,
+  red-light runners and cut-ins), conflict weighting, loss-based epoch. 119 k labels in total.
+* Rule fixed before the comparison: most successes, then fewest collisions + violations, then the later round.
+
+### Reference policies
+
+The observable teacher (labels for 1.1) and the 1.0 reference teacher (all agents, 3.5 s horizon) drive the interaction
+test suite equally well (1.0 teacher 34/35, observable teacher 33/35 in a rendering-free Node replay — 34/35 in the browser run above — both without collisions): the 1.1 changes are
+about *which information a label may depend on*, not about a better driver. Every scenario family was iterated until
+the teacher avoided all of its activations (see [scenarios.md](scenarios.md)).
+
 
 ## 2. DriveJev 1.0 suites
 

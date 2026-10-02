@@ -1,12 +1,18 @@
 # DriveJev interactive demo
 
 Drive the [JevPilot](https://github.com/standardagents/jevpilot) world — a small town, a city and the interstate,
-with traffic, pedestrians, traffic lights, stop signs and optional scripted hazards — with DriveJev at the wheel,
+with traffic, pedestrians, traffic lights, stop signs and optional scripted hazards and multi-agent interactions — with DriveJev at the wheel,
 and watch every decision live: what the model saw, which behaviours it was offered, the probability it gave each
 one, and whether the executor applied the answer.
 
-<p align="center"><img src="screenshots/drivejev-city-hazard.png" alt="DriveJev yielding to a pedestrian crossing in front of it in the JevPilot city" width="90%"><br>
-<sub>Skyline City with hazards on: a pedestrian steps into the road and DriveJev chooses <i>Yield</i> (96 %), slowing to
+<p align="center"><img src="screenshots/drivejev-1.1-oncoming.jpg" alt="DriveJev 1.1 waiting for an oncoming car during a left turn in the JevPilot city" width="90%"><br>
+<sub>Skyline City with the interaction scenarios on: DriveJev 1.1 turns left as the light goes amber, waits inside the junction for an
+oncoming car with right of way and chooses <i>Hold</i> (97 %). The panel shows the model input — wide frames at t and t−0.5 s and the tele
+frame — the student state (a car 7.7 m to the right, conflict in 1.8 s; junction box: oncoming vehicle 1.2 s away) and the probability of every
+offered behaviour.</sub></p>
+
+<p align="center"><img src="screenshots/drivejev-city-hazard.png" alt="DriveJev yielding to a pedestrian crossing in front of it in the JevPilot city" width="70%"><br>
+<sub>DriveJev 1.0, Skyline City with hazards on: a pedestrian steps into the road and DriveJev chooses <i>Yield</i> (96 %), slowing to
 23 km/h. The panel shows the model input — wide frames at t and t−0.5 s and the tele frame (the pedestrian is clearest in
 the tele view) — the student state with the predicted conflict, and the probability of every offered behaviour.</sub></p>
 
@@ -99,7 +105,9 @@ The DriveJev pilot is fed exactly as in `simulator/harness.mjs`:
   profile (pixel ratio 1, no antialiasing, no shadows, low-detail foliage, a fresh wind material per world) and
   rendered with the ego car and all annotations hidden: the wide view (640×384, VFOV 90°, pitched up 10°) and the
   **tele view** (384×224, VFOV 15°, pitched up 2°) rendered into a sub-viewport of the same canvas and cropped.
-  The display scene keeps JevPilot's full quality.
+  The display scene keeps JevPilot's full quality. Each view is snapshotted right after it is drawn and
+  PNG-encoded in two Web Workers, so the 4 Hz capture does not stall the display (synchronous `toDataURL` calls
+  cost 20–40 ms of main-thread time per slot); the PNG bytes are identical to the harness's `toDataURL` output.
 - **Fixed clock.** Physics advances in fixed 0.05 s steps (20 Hz); the display interpolates between steps. The
   student state enters the prompt as JSON text, so variable time steps would produce numbers the model never saw.
 - **4 Hz decisions.** Observation and capture every 5 steps, the history frame exactly 10 steps (0.5 s) back,
@@ -124,4 +132,4 @@ The DriveJev pilot is fed exactly as in `simulator/harness.mjs`:
 
 `index.html`, `bootstrap.js`, `app.js` (adapted from JevPilot's `src/main.js`), `runtime.js` (model cameras,
 executor loop, pilots), `decision-panel.js`, `semantic-vectors.js` (3-D behaviour previews), `pilot.css`,
-`server.py` (static files + API proxy), `start.sh`, `vendor/lucide` (icons, ISC license).
+`png-worker.js` (PNG encoding of the model views), `server.py` (static files + API proxy), `start.sh`, `vendor/lucide` (icons, ISC license).

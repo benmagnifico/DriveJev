@@ -39,9 +39,9 @@ involve several agents that react to the ego through JevPilot's own rules.
 | `oncoming` (left-turner) | The ego goes straight on green; an oncoming car turns left across its path, timed to the ego's arrival, without yielding | the conflict starts on the far side of the junction and closes fast |
 | `stop_contention` | 2–3 cars reach the same all-way stop from the other arms within −2.5…+1.5 s of the ego | JevPilot's first-arrival order and junction reservations decide who goes; NPCs react to the ego's reservation, so going out of turn or waiting forever both fail |
 | `green_runner` | The ego waits at a red light; 0.8–2.6 s after its light turns green a cross car runs its (late) red at 10–14 m/s | "go as soon as it is green" is wrong; the runner is often hidden by buildings until ~20 m from the junction |
-| `occluded_ped` | A car is parked half on the kerb 42–72 m ahead; a pedestrian waits in front of its bumper (hidden from behind — in the images and in the perception summary), steps into the ego lane at 1.3–2.3 m/s, pauses there 2–3.5 s and then finishes crossing | the cue appears only when the pedestrian leaves cover; the trigger distance is recomputed every step as (hidden time + 0.6–0.9 s reaction) · v + v²/13 + slack, so a prompt reaction always suffices |
+| `occluded_ped` | A car is parked half on the kerb ahead; a pedestrian waits in front of its bumper (hidden from behind — in the images and in the perception summary), steps into the ego lane at 1.3–2.3 m/s, pauses there 2–3.5 s and then finishes crossing | the cue appears only when the pedestrian leaves cover. The step-out distance is recomputed every step as (hidden time + 0.6–0.9 s reaction) · u + u²/13 + slack, where u is the speed the ego could reach by full acceleration before it can react; the pedestrian is placed beyond that distance and never steps out in front of another car or later than a prompt reaction at the current speed can handle |
 | `cut_in` | Town/city: a kerb-parked car 17–31 m ahead pulls out into the ego lane (13–18 m merge), half of them then brake to a stop for 2–4 s; it turns off at the next junction. Interstate: a car in the neighbour lane 9–18 m ahead at 72–87 % of the ego speed cuts in over 26–38 m and in 70 % of cases brakes to 45 % of its speed | a vehicle appears close ahead, partly beside the lane; ACC alone is not always enough |
-| `turn_ped` | While the ego turns, 1–3 pedestrians (mostly from the near kerb) cross the road the ego turns into, 13.5–15.5 m past the junction centre, staggered by ~0.6 s | attention is on the junction; pedestrians arrive one after another |
+| `turn_ped` | While the ego turns, 1–3 pedestrians (mostly from the near kerb) cross the road the ego turns into, 13.5–15.5 m past the junction centre, staggered by ~0.6 s; same step-out rules as `occluded_ped` | attention is on the junction; pedestrians arrive one after another |
 
 Configurations used for training and evaluation:
 
@@ -51,9 +51,12 @@ Configurations used for training and evaluation:
 | `storm` | all nine kinds | 4 s (hazards back to back or overlapping) |
 | `highway` | `cut_in` | 10 s |
 
-Two rules keep the scenarios fair: a staged pedestrian whose crossing point the ego front has already reached
-never steps out (it would walk into the side of the car), and `preflight.mjs` drops seeds whose initial state
-already overlaps an NPC (a JevPilot spawn artefact). With `legacyHazards: true` the 1.0 director and agent pool
+Rules that keep the scenarios fair: a staged pedestrian whose crossing point the ego front has already reached
+never steps out (it would walk into the side of the car); in 1.1 worlds NPC vehicles (except red-light runners) stop
+for scripted pedestrians in their lane (JevPilot NPCs otherwise only yield on junction crosswalks and would drive
+through a jaywalker, hiding it from the ego); `preflight.mjs` drops seeds whose initial state already overlaps an NPC
+(a JevPilot spawn artefact). With these rules the observable teacher drives the interaction test suite with 0
+collisions (34/35 clean, one time-out). With `legacyHazards: true` the 1.0 director and agent pool
 are used, so the 1.0 suites replay exactly.
 
 All hazard parameters are drawn from a per-world seeded RNG, so a `(world, seed, hazards)` triple replays

@@ -2,7 +2,7 @@
 # DriveJev demo launcher: model service (serve/serve.py, default :9031) + web server (default :9030).
 #
 #   DRIVEJEV_MODEL=<released folder or HF repo id> bash demo/start.sh
-#   DRIVEJEV_BACKBONE=<Qwen-Drive-1.0-4B dir> DRIVEJEV_HEAD=<head.pt> bash demo/start.sh
+#   DRIVEJEV_BACKBONE=<Qwen-Drive-1.0-4B dir> DRIVEJEV_HEAD=<head.pt> [DRIVEJEV_SCHEMA=1.0] bash demo/start.sh
 #   bash demo/start.sh            # reuse a model service that already answers, or run without one
 #
 # Optional: PYTHON (interpreter, default python3/python on PATH), WEB_PORT, MODEL_PORT,
@@ -29,6 +29,8 @@ else
     serve=(--model "$DRIVEJEV_MODEL")
   elif [[ -n "${DRIVEJEV_BACKBONE:-}" && -n "${DRIVEJEV_HEAD:-}" ]]; then
     serve=(--backbone "$DRIVEJEV_BACKBONE" --head "default=$DRIVEJEV_HEAD")
+    # a 1.0 head checkpoint expects the 1.0 student observation
+    [[ -n "${DRIVEJEV_SCHEMA:-}" ]] && serve+=(--schema "default=$DRIVEJEV_SCHEMA")
   fi
   if ((${#serve[@]})); then
     echo "Starting the DriveJev model service on :$MODEL_PORT (the DriveJev pilot is available once it has loaded)"
