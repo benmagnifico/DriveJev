@@ -73,13 +73,17 @@ let worldKind = THEMES[requested] ? requested : "town";
 // hazard and interaction scenarios (`hazards=classic`: only the three 1.0 hazards; `hazards=storm`:
 // all of them back to back).
 const routeMode = params.get("route") === "default" ? "default" : "random";
+// `hazards=oncoming,green_runner,...` restricts the scenarios to the listed kinds.
 const HAZARD_MODES = { 1: "all", on: "all", true: "all", all: "all", classic: "classic", storm: "storm" };
-let hazardMode = HAZARD_MODES[params.get("hazards")] ?? "all";
-let hazardsOn = params.get("hazards") in HAZARD_MODES;
+const listedKinds = (params.get("hazards") ?? "").split(",").filter((k) => ALL_KINDS.includes(k));
+let hazardMode = listedKinds.length ? "list" : HAZARD_MODES[params.get("hazards")] ?? "all";
+let hazardsOn = params.get("hazards") in HAZARD_MODES || listedKinds.length > 0;
 // The interstate only has neighbour-lane cut-ins (junction scenarios cannot be placed there); the 1.0
 // junction runner is left out on the interstate as before.
 const hazardKinds = (kind) =>
-  hazardMode === "classic" ? HAZARD_KINDS.filter((k) => kind !== "highway" || k !== "cross_runner") : kind === "highway" ? ["cut_in"] : ALL_KINDS;
+  hazardMode === "classic" ? HAZARD_KINDS.filter((k) => kind !== "highway" || k !== "cross_runner")
+  : hazardMode === "list" ? listedKinds
+  : kind === "highway" ? ["cut_in"] : ALL_KINDS;
 /** Every world is a fresh InteractionWorld: its options and hazard agents exist only from construction. */
 function makeWorld(seed, kind) {
   return new InteractionWorld(seed, kind, {
@@ -349,12 +353,12 @@ function setHazards(on) {
   if (on === hazardsOn) return;
   hazardsOn = on;
   const url = new URL(location.href);
-  if (hazardsOn) url.searchParams.set("hazards", "1");
+  if (hazardsOn) url.searchParams.set("hazards", hazardMode === "list" ? listedKinds.join(",") : hazardMode === "all" ? "1" : hazardMode);
   else url.searchParams.delete("hazards");
   history.replaceState(null, "", url);
   closePilotMenu();
   Promise.resolve(resetWorld(sim.world.seed, worldKind)).then(() =>
-    toast(hazardsOn ? (hazardMode === "classic" ? "Hazard scenarios on · a jaywalker, junction runner or braking lead at most every 10–18 s" : "Hazard & interaction scenarios on · nine kinds, one at most every 9–16 s") : "Hazard scenarios off"),
+    toast(hazardsOn ? (hazardMode === "classic" ? "Hazard scenarios on · a jaywalker, junction runner or braking lead at most every 10–18 s" : hazardMode === "list" ? `Scenarios on · ${listedKinds.join(", ")}` : "Hazard & interaction scenarios on · nine kinds, one at most every 9–16 s") : "Hazard scenarios off"),
   );
 }
 function refreshWorld() {

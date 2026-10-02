@@ -42,7 +42,8 @@ Optional environment variables for `start.sh`: `PYTHON` (interpreter), `WEB_PORT
 | `world=town\|city\|highway` | driving scene (default `town`) |
 | `seed=<int>` | world seed (random if omitted; random demo worlds avoid the training/validation/test seeds 300000–329999) |
 | `route=default` | keep JevPilot's default route in town/city (otherwise a seeded random route across the grid; the interstate always uses its default route) |
-| `hazards=1` | scripted hazards: jaywalker, red-light / stop-sign runner, hard-braking lead vehicle (no junction runner on the interstate) |
+| `hazards=1` | scripted hazard and interaction scenarios, one at most every 9–16 s: the three 1.0 hazards (jaywalker, red-light / stop-sign runner, hard-braking lead) and the six 1.1 interactions (oncoming platoon / left-turner, 4-way-stop contention, late red-light runner after your green, pedestrian hidden behind a parked car, cut-in, pedestrians at the turn); the interstate only has cut-ins |
+| `hazards=storm` / `hazards=classic` / `hazards=oncoming,cut_in,…` | all kinds back to back (4 s cooldown) / only the three 1.0 hazards / only the listed kinds |
 | `aeb=off` | start with collision-mitigation braking off (on by default in the demo) |
 | `pilot=drivejev\|teacher\|kev\|jev` | initial pilot |
 | `arm=<name>` | decision head to request when the model service serves several (default `default`) |

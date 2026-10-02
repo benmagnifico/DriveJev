@@ -72,6 +72,24 @@ export class InteractionWorld extends DriveWorld {
   }
 
   speedEnvelope(v) {
+    const env = this.speedEnvelopeBase(v);
+    // v8 worlds: NPC vehicles (except red-light runners) also stop for scripted pedestrians in their lane — JevPilot
+    // NPCs otherwise only yield to pedestrians on junction crosswalks and would drive through a jaywalker.
+    if (v !== this.player && !this.options.legacyHazards && !v.hazard?.ignoreRules && this.hazardPeds?.length) {
+      const sin = Math.sin(v.heading || 0), cos = Math.cos(v.heading || 0);
+      for (const p of this.hazardPeds) {
+        if (!['walking', 'done'].includes(p.hazard?.state)) continue;
+        const dx = p.x - v.x, dz = p.z - v.z, ahead = dx * sin - dz * cos, right = dx * cos + dz * sin;
+        if (ahead > 0 && ahead < 35 && Math.abs(right) < (v.width || 1.9) / 2 + 0.9) {
+          const cap = Math.sqrt(2 * 5 * Math.max(0, ahead - (v.depth || 4.2) / 2 - 2.0));
+          if (cap < env.max) { env.max = cap; env.reason = 'Pedestrian in lane'; }
+        }
+      }
+    }
+    return env;
+  }
+
+  speedEnvelopeBase(v) {
     const h = v.hazard;
     if (h && h.state === 'active') {
       if (h.static || (h.startAt && this.time < h.startAt))
@@ -116,6 +134,18 @@ export class InteractionDirector extends HazardDirector {
     return node.neighbors.map((id) => w.byId[id]).find((n) => Math.cos(angle(heading(node, n) - wanted)) > min) ?? null;
   }
   front(c) { const v = this.sim.player; return c.stopS - v.s - v.depth / 2; }
+  /** Is another (non-parked) vehicle on the ego route between the ego front and station atS, or next to the pedestrian? */
+  vehicleBetween(atS, ped) {
+    const sim = this.sim, v = sim.player, from = v.s + v.depth / 2;
+    for (const o of sim.traffic) {
+      if (o.hazard?.state === 'parked' || o.hazard?.static) continue;
+      if (Math.hypot(o.x - ped.x, o.z - ped.z) < 7) return true;
+      if (Math.hypot(o.x - v.x, o.z - v.z) > atS - from + 10) continue;
+      const near = nearestOnPath(o, v.route.points, 0);
+      if (near.distance < 2.6 && near.s > from - 1 && near.s < atS + 3) return true;
+    }
+    return false;
+  }
   turnOf(c) { const t = Math.sin(angle(c.exit - c.approach)); return t > 0.5 ? 'right' : t < -0.5 ? 'left' : Math.cos(angle(c.exit - c.approach)) > 0.9 ? 'straight' : 'other'; }
 
   before(dt) {
@@ -129,15 +159,32 @@ export class InteractionDirector extends HazardDirector {
     }
     for (const p of sim.hazardPeds) {
       const h = p.hazard, v = sim.player;
-      if (h.kind !== 'occluded_ped') continue;
+      if (h.kind !== 'occluded_ped' && h.kind !== 'turn_ped') continue;
       if (h.state === 'walking' && h.pauseAt && !h.paused && p.progress >= h.pauseAt) { h.paused = true; h.resumeAt = sim.time + h.pauseS; p.direction = 0; }
       if (h.state === 'walking' && h.paused && h.resumeAt && sim.time >= h.resumeAt && !this.frozen) { h.resumeAt = null; p.direction = h.speed / 0.9; }
       if (h.state !== 'staged' || this.frozen) continue;
-      // Steps out when the ego front is (hidden time + reaction) * v + v^2 / (2 * 6.5) + slack away, re-evaluated every
-      // step with the speed the ego can reach while the pedestrian is still hidden: avoidable for a prompt reaction.
-      const d = h.at_s - v.s - v.depth / 2, hidden = 0.7 / h.speed, u = Math.min(sim.world.theme.limit, Math.max(v.speed, 0.5) + 3 * hidden);
+      if (h.kind === 'turn_ped') {
+        const dd = h.at_s - v.s - v.depth / 2;
+        if (dd < 1.0) { h.state = 'done'; h.doneAt = sim.time; h.expired = true; continue; }
+        const feasible = dd >= 0.6 * v.speed + (v.speed * v.speed) / 13 + 1.0;
+        if ((dd / Math.max(v.speed, 0.5) <= h.ttc || dd < 8) && feasible && !this.vehicleBetween(h.at_s, p)) {
+          h.state = 'walking'; h.startAt = sim.time; p.direction = h.speed / 0.9;
+          this.record({ kind: 'turn_ped', event: 'walk', id: p.id, ego_distance_m: dd, ego_speed_mps: v.speed });
+        }
+        continue;
+      }
+      // Steps out when the ego front is (hidden time + reaction) * u + u^2 / (2 * 6.5) + slack away, re-evaluated every
+      // step, where u is the speed the ego could reach by full acceleration (5 m/s^2, capped at the speed limit) before
+      // it can react: a prompt reaction always avoids the pedestrian, even if the ego was accelerating.
+      const d = h.at_s - v.s - v.depth / 2, hidden = 0.7 / h.speed;
+      const u = Math.min(sim.world.theme.limit, Math.max(v.speed, 0.5) + 5 * (hidden + h.reaction));
       if (d < 1.0) { h.state = 'done'; h.doneAt = sim.time; h.expired = true; continue; }
       if (d <= (hidden + h.reaction) * u + (u * u) / 13 + h.slack) {
+        // A pedestrian does not step out in front of another car, and never later than a prompt reaction at the
+        // current speed can handle (if a car was in the way until then, it stays on the kerb).
+        const vNow = Math.max(v.speed, 0.5);
+        if (d < (hidden + h.reaction) * vNow + (vNow * vNow) / 13 + 1.0) continue;
+        if (this.vehicleBetween(h.at_s, p)) { if (!h.waitedSince) h.waitedSince = sim.time; continue; }
         h.state = 'walking'; h.startAt = sim.time; p.direction = h.speed / 0.9;
         this.record({ kind: 'occluded_ped', event: 'walk', ego_distance_m: d, ego_speed_mps: v.speed });
       }
@@ -294,7 +341,11 @@ export class InteractionDirector extends HazardDirector {
     if (world.type === 'highway' || v.speed < 6) return false;
     const car = this.freeCars(1)?.[0], p = this.freePeds(1)?.[0];
     if (!car || !p) return false;
-    const s = v.s + v.depth / 2 + 42 + this.r() * 30; // crossing station on the ego route
+    const speed = 1.3 + this.r() * 1.0, reaction = 0.6 + this.r() * 0.3, slack = 1.5 + this.r() * 2.5;
+    // Crossing station on the ego route, always beyond the step-out distance at the speed limit (otherwise a fast ego
+    // would already be inside it when the pedestrian is placed, and the pedestrian would step out too late).
+    const lim = world.theme.limit, stepOut = (0.7 / speed + reaction) * lim + (lim * lim) / 13 + slack;
+    const s = v.s + v.depth / 2 + Math.max(42 + this.r() * 30, stepOut + 5 + this.r() * 10);
     if (s > v.route.length - 25) return false;
     if (v.route.crossings.some((c) => Math.abs(c.stopS + 10.5 - s) < 26)) return false;
     const carS = s - 2.1 - 0.5;
@@ -305,7 +356,6 @@ export class InteractionDirector extends HazardDirector {
     // Waits in front of the parked car's bumper (hidden from behind), steps into the ego lane, pauses there
     // (looking along the far lane) and then finishes crossing.
     const start = move(at, h + Math.PI / 2, 2.85), walkHeading = angle(h - Math.PI / 2);
-    const speed = 1.3 + this.r() * 1.0, reaction = 0.6 + this.r() * 0.3, slack = 1.5 + this.r() * 2.5;
     this.stagePed(p, start, walkHeading, 8.35, { kind: 'occluded_ped', at_s: s, speed, reaction, slack, pauseAt: 3.05, pauseS: 2 + this.r() * 1.5, from: 'right', occluder: car.id });
     p.hazard.state = 'staged';
     this.record({ kind: 'occluded_ped', id: p.id, occluder: car.id, at_s: s, speed, reaction, slack });
@@ -387,6 +437,7 @@ export class InteractionDirector extends HazardDirector {
       const walkHeading = angle(c.exit + (fromRight ? -Math.PI / 2 : Math.PI / 2));
       const speed = 1.2 + this.r() * 1.2, ttc = 2.4 + this.r() * 1.4 + k * 0.6;
       this.stagePed(p, start, walkHeading, 14.4, { kind: 'turn_ped', at_s: atS, ttc, speed, from: fromRight ? 'right' : 'left' });
+      p.hazard.state = 'staged';
       placed.push({ id: p.id, ttc: Math.round(ttc * 10) / 10, speed: Math.round(speed * 10) / 10, from: fromRight ? 'right' : 'left' });
     });
     this.record({ kind: 'turn_ped', node: node.id, turn, peds: placed });
