@@ -10,7 +10,7 @@ pedestrians, traffic lights and stop signs. JevPilot is used unmodified (git sub
 | `simulator/world.mjs` | `DriveWorld` = JevPilot `Simulation` + seeded random routes over the whole grid, pre-allocated hazard agents and a `HazardDirector`, and a dynamic-state `clone()` used by the teachers |
 | `simulator/interactions.mjs` | `InteractionWorld` (larger agent pool) and `InteractionDirector` with the six multi-agent interaction scenarios ([scenarios](scenarios.md)) |
 | `simulator/executor.mjs` | Semantic executor (candidate generation, lane keeping, speed profiles, ACC, optional AEB), the student observation, evaluation counters, and the base reference teacher |
-| `simulator/interaction_executor.mjs` | `InteractionExecutor` (vehicle-occlusion perception, junction ETA fields, `obsSchema: '1.0' \| '1.1'`) and the observable teacher |
+| `simulator/interaction_executor.mjs` | `InteractionExecutor` (vehicle-occlusion perception, junction ETA fields) and the observable teacher |
 | `simulator/preflight.mjs` | drops suite seeds whose initial state already overlaps an NPC |
 | `simulator/harness.mjs` | Browser page: model cameras (wide + tele), batch and real-time closed loops |
 | `simulator/run.mjs` | Node runner: static server, model proxy, N headless Chrome workers, `episodes.jsonl` |
@@ -33,7 +33,7 @@ variable time step would feed the model numbers it never saw; displays interpola
 | Camera | Size | Vertical FOV | Pitch | Purpose |
 |---|---|---|---|---|
 | `front` (t−0.5 s and t) | 640×384 | 90° | +10° | scene, near signals, motion |
-| `front_tele` (t) | 384×224 | 15° | +2° | traffic lights, pedestrians and vehicles 40–90 m ahead |
+| `front_tele` (t) | 384×224 | 15° | +2° | traffic lights, pedestrians and vehicles 40 to 90 m ahead |
 
 Both are rendered from a dedicated scene built with JevPilot's training render profile (pixel ratio 1,
 no antialiasing, no shadows, low foliage) at 1.6 m height, with the ego car and all annotations hidden.
@@ -42,7 +42,7 @@ about five, which is what makes stopping from city speed (18 m/s) possible.
 
 ## Behaviours (candidates)
 
-The executor offers 2–8 behaviours per decision. Candidate IDs never appear in the prompt.
+The executor offers 2 to 8 behaviours per decision. Candidate IDs never appear in the prompt.
 
 | Behaviour | Offered when | What the executor does |
 |---|---|---|
@@ -55,19 +55,17 @@ The executor offers 2–8 behaviours per decision. Candidate IDs never appear in
 | `continue_current` | a stop/turn/yield is active | keep the current behaviour and its target |
 | `emergency_brake` | always | maximum braking (8 m/s²) |
 
-Rules that remove known failure modes of the earlier prototype:
+Executor rules:
 
 * feedback (`stop_unreachable`, `turn_completed`) belongs to the current behaviour and is cleared when it changes;
 * `stop_at_line` is gated by the **front bumper**, not the car centre;
-* a braking behaviour started less than 0.5 s ago is not cancelled by a moving behaviour (no stop–go flapping);
+* a braking behaviour started less than 0.5 s ago is not cancelled by a moving behaviour (no stop-and-go flapping);
 * ACC: JevPilot's standstill gap plus a 0.8 s time headway to the perceived lead vehicle;
 * AEB (optional, off in the main evaluation): caps speed when the perception predictor finds a collision that braking can prevent.
 
 ## Student observation
 
-Only these fields are serialized (the compiler rejects anything else, so simulator truth cannot leak). DriveJev 1.0
-reads **observation schema 1.1** (`observation_schema` in `drivejev_config.json`); schema 1.0 is the observation of the
-preview (h4), an unreleased development model trained without the interaction scenarios:
+Only these fields are serialized (the compiler rejects anything else, so simulator truth cannot leak):
 
 ```json
 {
@@ -88,40 +86,39 @@ preview (h4), an unreleased development model trained without the interaction sc
 * `junction_control` is static map information; `stop_completed` and `stationary_s` are the ego car's own memory.
 * `traffic.*` is computed only from objects reported by JevPilot's sensor scan (range ≥ 80 m, 360°, occluded by
   buildings). Other vehicles' planned routes are removed before prediction (constant-velocity extrapolation).
-* Schema-1.1 perception also lets **vehicles occlude**: a pedestrian is hidden when the line of sight from the camera passes
+* Perception also lets **vehicles occlude**: a pedestrian is hidden when the line of sight from the camera passes
   through a car's footprint, a vehicle when its centre and both ends are hidden; anything within 6 m is always
   perceived. A pedestrian behind a parked car is therefore missing from the state exactly as long as it is hidden
   in the images.
-* Schema 1.1 adds `oncoming_eta_s` / `cross_eta_s`: the time until the nearest perceived oncoming / crossing vehicle that is
-  closing on the junction reaches the junction box (constant velocity; `null` beyond 12 s). Schema-1.0 heads are
-  served with `obsSchema: '1.0'`, which reproduces the schema-1.0 observation exactly (no ETA fields, building
-  occlusion only).
-* **Signal colours are not in the observation** – the model has to see them.
+* `oncoming_eta_s` / `cross_eta_s`: the time until the nearest perceived oncoming / crossing vehicle that is closing on
+  the junction reaches the junction box (constant velocity; `null` beyond 12 s).
+* **Signal colours are not in the observation**: the model has to see them.
 
 ## Teachers (privileged)
 
 ### Observable teacher
 
-`observableTeacher(executor)` is the base reference teacher below with four changes, each found while building the
-interaction scenarios:
+`observableTeacher(executor)` labels the training data of DriveJev 1.0 and drives the privileged pilot of the demo. It
+reads JevPilot's rule state and rolls the world forward for every offered behaviour, like the reference teacher below,
+with four rules that keep every label explainable from the student's inputs:
 
-1. **Only what the student could have seen.** A rollout contains only road users that the schema-1.1 perception reported
+1. **Only what the student could have seen.** A rollout contains only road users that the perception reported
    in the last second (or that are within 8 m), so a label never reacts to a car hidden behind a building or a
    pedestrian still hidden behind a parked car.
 2. **Gap acceptance with a time margin.** A behaviour is safe only if the ego never enters the zone a moving vehicle
-   will cover in the next 0.6 s (its footprint stretched forward), unless that vehicle is following the ego. The base
-   rule (0.25 m footprint clearance) accepted left turns 0.1 s in front of oncoming cars.
-3. **Only rear-end contacts are excused.** The base teacher excused every contact at ego speed ≤ 0.4 m/s, which allowed waiting
-   inside an oncoming lane.
+   will cover in the next 0.6 s (its footprint stretched forward), unless that vehicle is following the ego, so left
+   turns are never accepted just in front of an oncoming car.
+3. **Only rear-end contacts are excused.** A contact at low ego speed is excused only when another vehicle hits the
+   ego from behind, so waiting inside an oncoming lane is never labelled safe.
 4. **No braking into a near miss.** If every stopping behaviour collides while continuing only lacks margin, the
    teacher continues; if everything collides it minimises the impact speed. The horizon is 4.5 s (gap acceptance
    from standstill needs more than 3.5 s).
 
-### Base reference teacher
+### Reference teacher
 
 `referenceTeacher(executor)` reads JevPilot's rule state (signal phase, stop-sign service, junction reservations, first
 arrival) and rolls the **whole world** forward 3.5 s for each candidate on a dynamic-state clone, so NPCs react to
 the ego as they would in reality. Pending hazard triggers that the ego could not yet observe stay frozen inside
 the rollout. It picks the most progressive behaviour that is safe (no at-fault contact, clearance > 0.25 m) and
-legal, and spreads probability over behaviours whose rollouts are indistinguishable. It is an upper-bound
-reference policy, not part of the model.
+legal, and spreads probability over behaviours whose rollouts are indistinguishable. It is the upper-bound reference
+of the base test suite, not part of the model.

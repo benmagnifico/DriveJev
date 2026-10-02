@@ -219,6 +219,9 @@ __marimo__/
 
 # DriveJev
 runs/
+checkpoints/
+/package.json
+/package-lock.json
 demo/runtime/
 *.pt
 *.safetensors

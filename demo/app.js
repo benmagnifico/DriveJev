@@ -57,11 +57,11 @@ const icons = {
 const icon = (name) => `<i data-lucide="${name}"></i>`,
   $ = (id) => document.getElementById(id);
 
-// Random demo worlds never use the training / validation / test seed range (300000–329999).
+// Random demo worlds never use the training / validation / test seed ranges (300000–329999, 400000–429999).
 function randomSeed() {
   for (;;) {
     const seed = Math.floor(Math.random() * 999999);
-    if (seed < 300000 || seed > 329999) return seed;
+    if ((seed < 300000 || seed > 329999) && (seed < 400000 || seed > 429999)) return seed;
   }
 }
 const params = new URLSearchParams(location.search),
