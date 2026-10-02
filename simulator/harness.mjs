@@ -3,9 +3,9 @@
  * 0.05 s physics, 4 Hz capture/decision slots and a history frame exactly 10 steps back.
  *   policy 'model'   : DriveJev behind /predict
  *   policy 'teacher' : privileged observable teacher (upper bound, no cameras)
- * World: InteractionWorld (DriveJev 1.1: the 1.0 world + multi-agent interaction scenarios).
- * cfg.obs_schema '1.1' (default) or '1.0' (1.0 heads: no vehicle occlusion, no junction ETA fields);
- * cfg.legacyHazards replays 1.0 suites exactly (1.0 hazard director and agent pool).
+ * World: InteractionWorld (the base world + multi-agent interaction scenarios).
+ * cfg.obs_schema '1.1' (default) or '1.0' (schema-1.0 heads: no vehicle occlusion, no junction ETA fields);
+ * cfg.legacyHazards replays the base suites exactly (base hazard director and agent pool).
  *   runEpisode       : batch closed loop (the world waits for each answer)
  *   runRealtime      : real-time closed loop (the world never waits)
  */

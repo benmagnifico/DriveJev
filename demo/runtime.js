@@ -3,7 +3,7 @@
 // The model sees exactly what the closed-loop harness (simulator/harness.mjs) gives it: two wide
 // 640x384 front frames (t-0.5 s, t) and one 384x224 tele frame (t), rendered from a second,
 // training-profile scene, plus the whitelisted student observation and the offered behaviours.
-// The semantic executor (simulator/interaction_executor.mjs: the 1.0 executor with vehicle-occlusion
+// The semantic executor (simulator/interaction_executor.mjs: the base executor with vehicle-occlusion
 // perception) turns the accepted behaviour into steering and speed. Loop: fixed 0.05 s physics, capture every 5 steps (4 Hz), history frame exactly 10 steps
 // back, at most one request in flight, an answer is applied only if its observation is <= 0.5 s old.
 import * as THREE from "three";
@@ -254,7 +254,7 @@ export class SemanticRuntime {
   get active() {
     return !!this.executor;
   }
-  // obsSchema: the student observation the served head was trained on ("1.0" heads see the 1.0 fields only).
+  // obsSchema: the student observation the served head was trained on ("1.0" heads see the schema-1.0 fields only).
   async engage(sim, pilot, { aeb, obsSchema }) {
     this.disengage();
     this.sim = sim;

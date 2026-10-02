@@ -29,7 +29,7 @@ else
     serve=(--model "$DRIVEJEV_MODEL")
   elif [[ -n "${DRIVEJEV_BACKBONE:-}" && -n "${DRIVEJEV_HEAD:-}" ]]; then
     serve=(--backbone "$DRIVEJEV_BACKBONE" --head "default=$DRIVEJEV_HEAD")
-    # a 1.0 head checkpoint expects the 1.0 student observation
+    # a head trained on observation schema 1.0 (e.g. the preview) needs DRIVEJEV_SCHEMA=1.0
     [[ -n "${DRIVEJEV_SCHEMA:-}" ]] && serve+=(--schema "default=$DRIVEJEV_SCHEMA")
   fi
   if ((${#serve[@]})); then

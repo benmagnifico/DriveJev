@@ -25,10 +25,10 @@ list is tried after a cooldown (10–18 s by default).
 | `cross_runner` | When the ego is 2.6–4.5 s from a junction, a vehicle on a perpendicular arm drives through at 9–14 m/s ignoring its red light / stop sign, timed to arrive with the ego | the ego has right of way (green or served stop); buildings often hide the runner until late |
 | `lead_brake` | A vehicle is inserted 14–28 m ahead in the ego lane at the ego speed and brakes to a stop at 7 m/s² after 1.2–3.2 s, waits 3–6 s and drives on | tests following distance and the choice between ACC, `yield_agent` and `emergency_brake` |
 
-## Interaction scenarios (DriveJev 1.1)
+## Interaction scenarios
 
 `simulator/interactions.mjs` adds six multi-agent scenarios on top of the three hazards above
-(`InteractionWorld` = the 1.0 world with a larger pool of pre-allocated agents; `InteractionDirector` tries every
+(`InteractionWorld` = the base `DriveWorld` with a larger pool of pre-allocated agents; `InteractionDirector` tries every
 requested kind in priority order whenever the cooldown has expired, so kinds that need a particular junction do not
 block the others). Each one needs a *decision* — wait, yield, brake or go — rather than only a reflex, and most
 involve several agents that react to the ego through JevPilot's own rules.
@@ -52,12 +52,12 @@ Configurations used for training and evaluation:
 | `highway` | `cut_in` | 10 s |
 
 Rules that keep the scenarios fair: a staged pedestrian whose crossing point the ego front has already reached
-never steps out (it would walk into the side of the car); in 1.1 worlds NPC vehicles (except red-light runners) stop
+never steps out (it would walk into the side of the car); in interaction worlds NPC vehicles (except red-light runners) stop
 for scripted pedestrians in their lane (JevPilot NPCs otherwise only yield on junction crosswalks and would drive
 through a jaywalker, hiding it from the ego); `preflight.mjs` drops seeds whose initial state already overlaps an NPC
 (a JevPilot spawn artefact). With these rules the observable teacher drives the interaction test suite with 0
-collisions (34/35 clean, one time-out). With `legacyHazards: true` the 1.0 director and agent pool
-are used, so the 1.0 suites replay exactly.
+collisions (34/35 clean, one time-out). With `legacyHazards: true` the base director and agent pool
+are used, so the base suites replay exactly.
 
 All hazard parameters are drawn from a per-world seeded RNG, so a `(world, seed, hazards)` triple replays
 exactly. JevPilot's own interactions (stop-sign arrival order, junction reservations, queues at lights,
@@ -67,9 +67,9 @@ pedestrians crossing in the all-red walk phase, turning traffic, highway merges)
 
 | Suite | File | Seeds | Episodes |
 |---|---|---|---|
-| 1.0 validation (model selection only) | `eval/suites/val.json` | 311000–311014 | 4 town, 4 city, 6 hazards (3 town / 3 city), 1 highway |
-| 1.0 test (reported once per model) | `eval/suites/test.json` | 320000–320027 | 8 town, 8 city, 10 hazards (5 town / 5 city), 2 highway |
-| interaction validation (1.1 model selection only) | `eval/suites/interaction_val.json` | 411000–411023 | 9 town + 9 city `interaction`, 2 + 2 `storm`, 2 interstate |
+| base validation (preview model selection only) | `eval/suites/val.json` | 311000–311014 | 4 town, 4 city, 6 hazards (3 town / 3 city), 1 highway |
+| base test (reported once per model) | `eval/suites/test.json` | 320000–320027 | 8 town, 8 city, 10 hazards (5 town / 5 city), 2 highway |
+| interaction validation (DriveJev 1.0 model selection only) | `eval/suites/interaction_val.json` | 411000–411023 | 9 town + 9 city `interaction`, 2 + 2 `storm`, 2 interstate |
 | interaction test (reported once per model) | `eval/suites/interaction_test.json` | 420000–420035 (420018 dropped by preflight) | 12 town + 11 city `interaction`, 4 + 4 `storm`, 4 interstate |
 
 Interaction episodes have a 160 s limit (interstate 130 s): with hazards every 9–16 s even the reference teacher

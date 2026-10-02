@@ -3,27 +3,26 @@
 <h3 align="center">A vision-language driving policy that answers “what should the car do now?” with a probability for every offered behaviour</h3>
 
 <p align="center">
-  🤗 <a href="https://huggingface.co/benmagnifico/DriveJev-4B">Model (coming soon)</a> &nbsp;|&nbsp;
+  🤗 <a href="https://huggingface.co/benmagnifico/DriveJev-4B">Model</a> &nbsp;|&nbsp;
   🚗 <a href="https://github.com/standardagents/jevpilot">JevPilot simulator</a> &nbsp;|&nbsp;
   🧠 <a href="https://huggingface.co/Qwen/Qwen-Drive-1.0-4B">Qwen-Drive-1.0 backbone</a> &nbsp;|&nbsp;
   📄 <a href="docs/evaluation.md">Evaluation</a>
 </p>
 
 <p align="center">
-  <img src="assets/teaser_v11.png" alt="Three DriveJev 1.1 interaction decisions: front camera, tele camera and behaviour probabilities" width="90%">
+  <img src="assets/teaser_interactions.png" alt="Three DriveJev 1.0 interaction decisions: front camera, tele camera and behaviour probabilities" width="90%">
 </p>
 
 > [!IMPORTANT]
 > **News**
-> - **[2026/10]** **DriveJev 1.1** — multi-agent interaction scenarios for JevPilot: unprotected left turns into an
->   oncoming platoon, 4-way-stop contention, a red-light runner just after the ego's green, a pedestrian hidden behind a
->   parked car, cut-ins and pedestrians at the turn exit. Perception now lets vehicles occlude, the teacher only uses what
->   the student's sensors could see, and the decision head is retrained with interaction data and DAgger.
->   On the new interaction test suite DriveJev 1.1 drives **28/35 (80 %)** of the episodes cleanly against 10/35 (29 %) for 1.0,
->   with 1 collision instead of 24 ([results](#interaction-benchmark-drivejev-11)).
-> - **[2026/10]** DriveJev 1.0: inference code, the JevPilot closed-loop harness with hazard scenarios, the live demo
->   and the evaluation suites are released. Weights will be published on Hugging Face as one folder (backbone with any
->   LoRA merged in, plus the decision head). The training pipeline will be released later.
+> - **[2026/10]** **DriveJev 1.0** — the weights are on Hugging Face
+>   ([`benmagnifico/DriveJev-4B`](https://huggingface.co/benmagnifico/DriveJev-4B): backbone and decision head in one
+>   folder), together with the inference code, the JevPilot closed-loop harness with hazard and multi-agent interaction
+>   scenarios (unprotected left turns into an oncoming platoon, 4-way-stop contention, a red-light runner just after the
+>   ego's green, a pedestrian hidden behind a parked car, cut-ins, pedestrians at the turn exit), the live demo and the
+>   evaluation suites. On the interaction test suite DriveJev 1.0 drives **28/35 (80 %)** of the episodes cleanly against
+>   10/35 (29 %) for a preview model trained without the interactions, with 1 collision instead of 24; on the base suite
+>   it reaches 25/28 with 0 collisions ([results](#interaction-benchmark)). The training pipeline will be released later.
 
 ## Introduction
 
@@ -33,7 +32,7 @@ behaviours a local executor can actually carry out right now — *cruise*, *stop
 pedestrian*, *turn*, *start*, *brake* — and returns a probability for each. The executor then turns the chosen
 behaviour into steering and speed. The car drives closed-loop in [JevPilot](https://github.com/standardagents/jevpilot)
 towns, cities and on the interstate, with traffic, pedestrians, traffic lights, stop signs, scripted hazards and
-(since 1.1) multi-agent interaction scenarios in which other road users have right of way, contend for a junction,
+multi-agent interaction scenarios in which other road users have right of way, contend for a junction,
 hide behind parked cars or cut in.
 
 - **Prompt compiler.** Two wide front frames (t−0.5 s, t), one narrow *tele* frame for distant traffic lights,
@@ -45,7 +44,7 @@ hide behind parked cars or cut in.
   `q(decision, state) · k(behaviour)`.
 - **Semantic executor.** Lane keeping along the route, a stop-line profile, adaptive cruise (gap to the perceived
   lead vehicle), a yield point in front of a predicted conflict and an optional collision-mitigation brake.
-- **Observable teacher (1.1).** Labels come from a privileged policy that reads the traffic rules and rolls the world
+- **Observable teacher.** Labels come from a privileged policy that reads the traffic rules and rolls the world
   forward for every behaviour — but only with the road users the student's perception has seen, with a 0.6 s gap
   margin in front of moving vehicles, so every label can be explained from the model's inputs.
 
@@ -55,9 +54,10 @@ hide behind parked cars or cut in.
 
 ### Highlights
 
-- 🤝 **Multi-agent interactions (1.1).** Six new scenario families on top of the 1.0 hazards, each checked so that the
+- 🤝 **Multi-agent interactions.** Six scenario families on top of the three base hazards, each checked so that the
   privileged teacher always avoids the conflict (0 collisions in 242 scenario activations on the test suite) while a
-  careless driver does not: the 1.0 model collides in 24 of 35 interaction test episodes, DriveJev 1.1 in 1.
+  careless driver does not: a preview model trained without them collides in 24 of 35 interaction test episodes,
+  DriveJev 1.0 in 1.
 - 🚦 **The whole JevPilot world**, not one scripted junction: signals, stop signs (full stop + right of way), queues,
   turns and the interstate, with every episode on a random route through full traffic.
 - 🎯 **A distribution, not free text.** Every decision is a probability over the behaviours that are executable
@@ -69,98 +69,110 @@ hide behind parked cars or cut in.
 
 ## Results
 
-### Interaction benchmark (DriveJev 1.1)
+### Interaction benchmark
 
 Closed-loop drives on the **interaction test suite** (35 episodes, seeds never used for training or model selection):
 12 town and 11 city random routes with all nine hazard and interaction kinds (one every 9–16 s), 8 `storm` episodes
 (one every 4–7 s) and 4 interstate drives with cut-ins; full JevPilot traffic everywhere. Batch closed loop (the world
 waits for each answer), AEB off unless stated, 160 s limit. Success = reached the destination with no collision and no
-violation (red light, amber that could still be stopped for, unserved stop sign).
+violation (red light, amber that could still be stopped for, unserved stop sign). *DriveJev preview (h4)* is an
+unreleased development model trained without the interaction scenarios (observation schema 1.0).
 
 <p align="center">
-  <img src="assets/interactions.jpg" alt="DriveJev 1.1 driving the interaction scenarios in the live demo" width="100%"><br>
-  <sub>DriveJev 1.1 at the wheel of the live demo (chase view): holding inside the junction for an oncoming car during a left turn, a pedestrian stepping out from in front of a parked car, a queue at a 4-way stop, a parked car that has just pulled out ahead, a pedestrian crossing the road the car turns into, a stop-sign runner.</sub>
+  <img src="assets/interactions.jpg" alt="DriveJev 1.0 driving the interaction scenarios in the live demo" width="100%"><br>
+  <sub>DriveJev 1.0 at the wheel of the live demo (chase view): holding inside the junction for an oncoming car during a left turn, a pedestrian stepping out from in front of a parked car, a queue at a 4-way stop, a parked car that has just pulled out ahead, a pedestrian crossing the road the car turns into, a stop-sign runner.</sub>
 </p>
 
 | Policy | Inputs | Success ↑ | Collisions ↓ (with hazard agent) | Violations ↓ | Route done | Stuck s/ep ↓ | Mean speed m/s |
 |---|---|---|---|---|---|---|---|
 | Observable teacher (privileged, upper bound) | simulator truth + rollouts of perceived agents | 97% <sub>[91, 100]</sub> (34/35) | 0 (0) | 0 | 99% | 0.5 | 7.6 |
-| DriveJev 1.0 (no interaction training) | 3 frames + 1.0 state | 29% <sub>[14, 43]</sub> (10/35) | 24 (24) | 8 | 61% | 0.1 | 9.1 |
-| DriveJev 1.1, interaction teacher data only (no new DAgger) | 3 frames + 1.1 state | 54% <sub>[37, 71]</sub> (19/35) | 12 (12) | 9 | 84% | 0.7 | 8.1 |
-| **DriveJev 1.1 (ours, h5c)** | 3 frames + 1.1 state | 80% <sub>[66, 91]</sub> (28/35) | 1 (1) | 4 | 97% | 3.7 | 7.1 |
-| DriveJev 1.1 (ours) + AEB | 3 frames + 1.1 state | 80% <sub>[66, 91]</sub> (28/35) | 1 (1) | 3 | 96% | 3.7 | 7.0 |
+| DriveJev preview (h4, no interaction training) | 3 frames + schema-1.0 state | 29% <sub>[14, 43]</sub> (10/35) | 24 (24) | 8 | 61% | 0.1 | 9.1 |
+| DriveJev, interaction teacher data only (h5a, no new DAgger) | 3 frames + schema-1.1 state | 54% <sub>[37, 71]</sub> (19/35) | 12 (12) | 9 | 84% | 0.7 | 8.1 |
+| **DriveJev 1.0 (ours, h5c)** | 3 frames + schema-1.1 state | 80% <sub>[66, 91]</sub> (28/35) | 1 (1) | 4 | 97% | 3.7 | 7.1 |
+| DriveJev 1.0 (ours) + AEB | 3 frames + schema-1.1 state | 80% <sub>[66, 91]</sub> (28/35) | 1 (1) | 3 | 96% | 3.7 | 7.0 |
 
 Per family (successes / episodes):
 
 | Policy | town+interaction | city+interaction | town+storm | city+storm | highway |
 |---|---|---|---|---|---|
 | Observable teacher (privileged, upper bound) | 12/12 | 11/11 | 4/4 | 3/4 | 4/4 |
-| DriveJev 1.0 (no interaction training) | 4/12 | 2/11 | 0/4 | 0/4 | 4/4 |
-| DriveJev 1.1, interaction teacher data only (no new DAgger) | 7/12 | 6/11 | 1/4 | 1/4 | 4/4 |
-| **DriveJev 1.1 (ours, h5c)** | 11/12 | 8/11 | 3/4 | 2/4 | 4/4 |
-| DriveJev 1.1 (ours) + AEB | 11/12 | 9/11 | 2/4 | 2/4 | 4/4 |
+| DriveJev preview (h4, no interaction training) | 4/12 | 2/11 | 0/4 | 0/4 | 4/4 |
+| DriveJev, interaction teacher data only (h5a, no new DAgger) | 7/12 | 6/11 | 1/4 | 1/4 | 4/4 |
+| **DriveJev 1.0 (ours, h5c)** | 11/12 | 8/11 | 3/4 | 2/4 | 4/4 |
+| DriveJev 1.0 (ours) + AEB | 11/12 | 9/11 | 2/4 | 2/4 | 4/4 |
 
 Collisions per hazard kind (episodes that ended in contact with that hazard agent / activations of that kind):
 
 | Policy | oncoming | stop_contention | green_runner | occluded_ped | cut_in | turn_ped | jaywalker | cross_runner | lead_brake |
 |---|---|---|---|---|---|---|---|---|---|
 | Observable teacher (privileged, upper bound) | 0/23 | 0/9 | 0/8 | 0/26 | 0/24 | 0/22 | 0/91 | 0/12 | 0/27 |
-| DriveJev 1.0 (no interaction training) | 3/8 | 0/6 | 0/5 | 10/22 | 6/20 | 0/9 | 4/44 | 1/5 | 0/15 |
-| DriveJev 1.1, interaction teacher data only (no new DAgger) | 3/12 | 0/9 | 0/6 | 2/32 | 5/23 | 0/22 | 2/67 | 0/7 | 0/21 |
-| **DriveJev 1.1 (ours, h5c)** | 0/16 | 0/9 | 0/6 | 0/25 | 0/24 | 1/25 | 0/92 | 0/13 | 0/32 |
-| DriveJev 1.1 (ours) + AEB | 0/19 | 0/7 | 0/5 | 0/25 | 0/24 | 1/28 | 0/91 | 0/11 | 0/33 |
+| DriveJev preview (h4, no interaction training) | 3/8 | 0/6 | 0/5 | 10/22 | 6/20 | 0/9 | 4/44 | 1/5 | 0/15 |
+| DriveJev, interaction teacher data only (h5a, no new DAgger) | 3/12 | 0/9 | 0/6 | 2/32 | 5/23 | 0/22 | 2/67 | 0/7 | 0/21 |
+| **DriveJev 1.0 (ours, h5c)** | 0/16 | 0/9 | 0/6 | 0/25 | 0/24 | 1/25 | 0/92 | 0/13 | 0/32 |
+| DriveJev 1.0 (ours) + AEB | 0/19 | 0/7 | 0/5 | 0/25 | 0/24 | 1/28 | 0/91 | 0/11 | 0/33 |
 
-- **From 10/35 to 28/35.** The 1.0 model never saw these interactions: it collides in 24 of 35 test episodes, every time with a scripted hazard agent — most often the pedestrian hidden behind a parked car (10 of 22 activations) and cut-ins (6 of 20). DriveJev 1.1 collides once (a pedestrian walking into the stationary car at the exit of a turn) and none of the 16 oncoming platoons / left-turners, 25 hidden pedestrians, 24 cut-ins, 6 late red-light runners or 9 four-way-stop contentions ends in contact.
+- **From 10/35 to 28/35.** The preview model never saw these interactions: it collides in 24 of 35 test episodes, every time with a scripted hazard agent — most often the pedestrian hidden behind a parked car (10 of 22 activations) and cut-ins (6 of 20). DriveJev 1.0 collides once (a pedestrian walking into the stationary car at the exit of a turn) and none of the 16 oncoming platoons / left-turners, 25 hidden pedestrians, 24 cut-ins, 6 late red-light runners or 9 four-way-stop contentions ends in contact.
 - **What each step buys** (validation, 24 episodes; full table in [docs/evaluation.md](docs/evaluation.md)): interaction teacher data alone 10 → 15 successes (14 → 6 collisions); up-weighting the decisions the teacher changed because of an interaction conflict removes the remaining collisions but makes the model hesitant (21 s per episode standing still although it could go); two DAgger rounds, in which DriveJev drives and the teacher relabels what it visits (the second with extra oncoming / red-light-runner / cut-in episodes), calibrate that caution: 19 / 24 with 2 collisions and 2.3 s stuck per episode. On the test suite the teacher-data-only head reaches 19/35 with 12 collisions.
-- **No regression on the 1.0 suite**: 25/28 with 0 collisions (1.0: 22/28, 2 collisions).
+- **No regression on the base suite**: 25/28 with 0 collisions (preview: 22/28, 2 collisions).
 - **What is left.** Of the 7 test failures, 3 are amber crossings at 0.8–4.4 m/s (the light changes while the car creeps up to the line), 1 a red-light count for a car whose front had crossed on green but which crawled over the line until the light turned red, 2 time-outs in dense episodes after long waits, and 1 the turn-exit contact above; the teacher (34/35) shows the remaining headroom. AEB does not change the success rate (28/35; 62 interventions).
 
 | Real-time closed loop (8 interaction test episodes, 1 worker) | Success | Collisions | Violations | Applied decisions | Latency p50 / p95 | Same 8 seeds, batch |
 |---|---|---|---|---|---|---|
-| DriveJev 1.1 (h5c) | 4/8 | 2 | 2 | 3.86 Hz | 137 / 143 ms | 5/8 |
+| DriveJev 1.0 (h5c) | 4/8 | 2 | 2 | 3.86 Hz | 137 / 143 ms | 5/8 |
 
 In real time the world never waits: physics follows the wall clock at 20 Hz, one request is in flight at a time and answers whose observation is older than 0.5 s are dropped. Eight episodes are few; the two real-time crashes are in `storm` episodes, where hazards arrive every 4–7 s.
 
-### DriveJev 1.0 suite
+### Base suite
 
-The 1.0 test suite (28 episodes: 8 town, 8 city, 10 with the three 1.0 hazards, 2 interstate) replays exactly in 1.1
-(`legacyHazards`); DriveJev 1.1 reads its own 1.1 observation there.
+The base test suite (28 episodes: 8 town, 8 city, 10 with the three base hazards — `jaywalker`, `cross_runner`,
+`lead_brake` — and 2 interstate) is the benchmark the preview model was developed on. It replays exactly in the
+interaction world (`legacyHazards`); DriveJev 1.0 reads its own observation (schema 1.1) there.
 
-| 1.0 test suite (28 episodes) | Success | Collisions | Violations | Route done | Stuck s/ep | town | city | town+hazards | city+hazards | highway |
+| Base test suite (28 episodes) | Success | Collisions | Violations | Route done | Stuck s/ep | town | city | town+hazards | city+hazards | highway |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Reference teacher 1.0 (privileged) | 96% <sub>[89, 100]</sub> (27/28) | 0 | 0 | 99% | 0.3 | 8/8 | 8/8 | 4/5 | 5/5 | 2/2 |
-| DriveJev 1.0 | 79% <sub>[61, 93]</sub> (22/28) | 2 | 5 | 95% | 0.3 | 5/8 | 8/8 | 3/5 | 4/5 | 2/2 |
-| DriveJev 1.0 + AEB | 79% <sub>[61, 93]</sub> (22/28) | 1 | 6 | 99% | 0.2 | 6/8 | 7/8 | 4/5 | 3/5 | 2/2 |
-| **DriveJev 1.1 (h5c)** | 89% <sub>[79, 100]</sub> (25/28) | 0 | 2 | 100% | 1.2 | 8/8 | 8/8 | 3/5 | 4/5 | 2/2 |
+| Base reference teacher (privileged) | 96% <sub>[89, 100]</sub> (27/28) | 0 | 0 | 99% | 0.3 | 8/8 | 8/8 | 4/5 | 5/5 | 2/2 |
+| DriveJev preview (h4) | 79% <sub>[61, 93]</sub> (22/28) | 2 | 5 | 95% | 0.3 | 5/8 | 8/8 | 3/5 | 4/5 | 2/2 |
+| DriveJev preview (h4) + AEB | 79% <sub>[61, 93]</sub> (22/28) | 1 | 6 | 99% | 0.2 | 6/8 | 7/8 | 4/5 | 3/5 | 2/2 |
+| **DriveJev 1.0 (ours, h5c)** | 89% <sub>[79, 100]</sub> (25/28) | 0 | 2 | 100% | 1.2 | 8/8 | 8/8 | 3/5 | 4/5 | 2/2 |
 
-Model selection used only the 24-episode interaction validation suite (and, for 1.0, its own validation suite); the
-full validation tables, the rule fixed before each comparison and the 1.0 ablations (state-only policy, no DAgger, linear
-head, LoRA) are in [docs/evaluation.md](docs/evaluation.md).
+Model selection used only the 24-episode interaction validation suite (and, for the preview, the base validation
+suite); the full validation tables, the rule fixed before each comparison and the preview's ablations (state-only
+policy, no DAgger, linear head, LoRA) are in [docs/evaluation.md](docs/evaluation.md).
 
 > Offline agreement with the teacher on held-out states is 95–98 % for every variant and does not separate good from
 > bad policies; all comparisons above are closed-loop.
 
 ## Models
 
-Weights are distributed as one folder per release (to be published on Hugging Face as `benmagnifico/DriveJev-4B`;
-1.1 as the default revision, 1.0 under the `v1.0` revision):
+The weights are one self-contained folder on Hugging Face,
+[`benmagnifico/DriveJev-4B`](https://huggingface.co/benmagnifico/DriveJev-4B) (tag `v1.0`):
 
 ```
 DriveJev-4B/
-├── drivejev_config.json   prompt/camera/behaviour contract, head configuration, observation schema (1.0 | 1.1)
+├── drivejev_config.json   prompt/camera/behaviour contract, head configuration, observation schema
 ├── head.safetensors       decision head (pointer_mlp, 4.2 M parameters, FP32)
-└── backbone/              Qwen-Drive-1.0-4B VLM; any fine-tuned (LoRA) layers are merged into these weights
+└── backbone/              Qwen-Drive-1.0-4B VLM: config, tokenizer, preprocessor, chat template, model.safetensors,
+                           plus its NOTICE and Apache-2.0 LICENSE
 ```
 
-| Release | Observation | Training data | Interaction test | 1.0 test |
+| Release | Observation schema | Training data | Interaction test | Base test |
 |---|---|---|---|---|
-| DriveJev 1.0 | 1.0 | 1.0 world: teacher episodes + 3 DAgger rounds | 10/35 (29 %) | 22/28 |
-| **DriveJev 1.1** | 1.1 | 1.0 data + interaction teacher episodes + 2 interaction DAgger rounds, conflict-weighted (119 k labels) | **28/35 (80 %)** | 25/28 |
+| **DriveJev 1.0** | 1.1 | base world: teacher episodes + 3 DAgger rounds; + interaction teacher episodes + 2 interaction DAgger rounds, conflict-weighted (119 k labels) | **28/35 (80 %)** | 25/28 |
+| DriveJev preview (h4, not released) | 1.0 | base world: teacher episodes + 3 DAgger rounds | 10/35 (29 %) | 22/28 |
 
-DriveJev 1.1 keeps the Qwen-Drive-1.0 VLM frozen, so `backbone/` is the original checkpoint and only the head is new: a rank-16 language-layer LoRA fine-tuned end to end from the 1.1 head (9 k interaction decisions) was tried and not adopted — it reached 11/24 on the interaction validation suite with 11 collisions, against 19/24 for the frozen backbone (rule fixed before the run: adopt only if strictly better). `tools/export_hf.py` builds the folder from a backbone and a head checkpoint, records the observation
+DriveJev 1.0 reads **observation schema 1.1**: the perception summary lets vehicles occlude and the junction block has
+`oncoming_eta_s` / `cross_eta_s`. Schema 1.0 is the preview's observation (building occlusion only, no ETA fields); it
+is kept so that schema-1.0 heads can be evaluated on exactly what they were trained on (`--set obs_schema=1.0`,
+`serve.py --schema default=1.0`).
+
+DriveJev 1.0 keeps the Qwen-Drive-1.0 VLM frozen, so `backbone/` is the original checkpoint (`lora_merged: false`) and
+only the head is new. A rank-16 language-layer LoRA fine-tuned end to end from the released head (9 k interaction
+decisions) was tried and not adopted — it reached 11/24 on the interaction validation suite with 11 collisions, against
+19/24 for the frozen backbone (rule fixed before the run: adopt only if strictly better) — so this release has no
+adapter to merge. `tools/export_hf.py` builds the folder from a backbone and a head checkpoint, records the observation
 schema the head expects (the model service reports it; the harness and the demo build the matching observation), and
-merges a PEFT LoRA adapter into the backbone when one is given (`--lora`), so fine-tuned variants load through the same
-`DrivingPolicy.from_pretrained` call.
+merges a PEFT LoRA adapter into the backbone when one is adopted (`--lora`), so fine-tuned variants load through the
+same `DrivingPolicy.from_pretrained` call.
 
 ## Install
 
@@ -184,7 +196,7 @@ npm install playwright && npx playwright install chromium   # headless closed-lo
 
 `examples/observations/` bundles six real decisions recorded in JevPilot — a red light 68 m ahead at 14 m/s
 (visible only in the tele view), a served stop sign with a clear junction, a pedestrian stepping out 31 m ahead, and
-three 1.1 interactions (a left turn on green into an oncoming platoon, a pedestrian stepping out from behind a parked
+three interactions (a left turn on green into an oncoming platoon, a pedestrian stepping out from behind a parked
 car, a fresh green with a cross car running its red) — each with its two wide frames, tele frame, state and offered
 behaviours, so the command below needs nothing but the weights.
 
@@ -221,24 +233,25 @@ Closed-loop episodes run in headless Chrome: JevPilot physics at 20 Hz, cameras 
 
 ```bash
 python serve/serve.py --model benmagnifico/DriveJev-4B --port 9031 &
-# interaction benchmark (1.1)
+# interaction benchmark
 node simulator/run.mjs --jobs eval/suites/interaction_test.json --out runs/itest --workers 4 --model-url http://127.0.0.1:9031/predict
 node simulator/run.mjs --jobs eval/suites/interaction_test.json --out runs/itest-teacher --set policy=teacher   # upper bound, no GPU
-# 1.0 suite (replays exactly)
+# base suite (replays exactly)
 node simulator/run.mjs --jobs eval/suites/test.json --out runs/test --workers 4
 node simulator/run.mjs --jobs eval/suites/test.json --out runs/test-aeb --set aeb=true            # with AEB
 node simulator/run.mjs --jobs eval/suites/interaction_test.json --out runs/itest-rtc --workers 1 --set realtime=true
 python eval/summarize.py runs/itest runs/itest-teacher
 ```
 
-A 1.0 head is evaluated on its own observation with `--set obs_schema=1.0` (serve it with `--schema default=1.0`).
+A head trained on observation schema 1.0 (such as the preview) is evaluated on its own observation with
+`--set obs_schema=1.0` (serve it with `--schema default=1.0`).
 `PLAYWRIGHT_MODULE` / `CHROME_PATH` point the runner at a specific Playwright build or Chrome binary. Use one
 worker for real-time runs so that measured latency is not inflated by other episodes sharing the GPU. See
 [docs/evaluation.md](docs/evaluation.md) for metric definitions and [docs/scenarios.md](docs/scenarios.md) for the suites.
 
 ## Live demo
 
-<p align="center"><img src="demo/screenshots/drivejev-1.1-oncoming.jpg" alt="DriveJev 1.1 waiting for an oncoming car during a left turn in the JevPilot city demo" width="85%"><br><sub>Skyline City with the interaction scenarios on: DriveJev 1.1 turns left on a light that has just gone amber, waits inside the junction for an oncoming car with right of way (state: a car 7.7 m to the right, conflict in 1.8 s, oncoming vehicle 1.2 s from the junction) and chooses <i>hold</i> (97 %). The panel shows the model input (wide t, wide t−0.5 s, tele t), the state it read and the probability of every offered behaviour.</sub></p>
+<p align="center"><img src="demo/screenshots/drivejev-oncoming.jpg" alt="DriveJev 1.0 waiting for an oncoming car during a left turn in the JevPilot city demo" width="85%"><br><sub>Skyline City with the interaction scenarios on: DriveJev 1.0 turns left on a light that has just gone amber, waits inside the junction for an oncoming car with right of way (state: a car 7.7 m to the right, conflict in 1.8 s, oncoming vehicle 1.2 s from the junction) and chooses <i>hold</i> (97 %). The panel shows the model input (wide t, wide t−0.5 s, tele t), the state it read and the probability of every offered behaviour.</sub></p>
 
 ```bash
 DRIVEJEV_MODEL=benmagnifico/DriveJev-4B bash demo/start.sh      # model service :9031 + web app :9030

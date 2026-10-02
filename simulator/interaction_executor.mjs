@@ -1,15 +1,16 @@
 /**
- * DriveJev 1.1 executor (perception with vehicle occlusion) + observable world-rollout teacher.
+ * DriveJev interaction executor (observation schema 1.1: perception with vehicle occlusion) + observable
+ * world-rollout teacher.
  *
- * The behaviour set, controller and candidate rules are the 1.0 ones (SemanticExecutor, unchanged). 1.1 adds:
+ * The behaviour set, controller and candidate rules are the base ones (SemanticExecutor, unchanged). Schema 1.1 adds:
  *  - perception: vehicles occlude pedestrians and other vehicles (JevPilot's scan only models buildings);
  *    a parked car can now hide a pedestrian from the sensors as it does in the camera images;
  *  - two perception-derived junction fields: `oncoming_eta_s` / `cross_eta_s` = time until the nearest
  *    perceived oncoming / crossing vehicle reaches the junction box (constant-velocity estimate);
- *  - `obsSchema: '1.0'` reproduces the 1.0 student observation exactly (for evaluating 1.0 heads);
+ *  - `obsSchema: '1.0'` reproduces the schema-1.0 student observation exactly (for evaluating schema-1.0 heads);
  *  - observableTeacher: (1) rollouts only contain road users the student's sensors have seen in the last 1 s
  *    (or that are within 8 m), so every label is explainable from the student inputs; (2) a collision is
- *    only excused when the ego is rear-ended (1.0 excused every contact at ego speed <= 0.4 m/s, which let
+ *    only excused when the ego is rear-ended (the base teacher excused every contact at ego speed <= 0.4 m/s, which let
  *    the teacher wait inside an oncoming lane); (3) 4.5 s horizon for gap acceptance from standstill;
  *    (4) a behaviour is only "safe" if the ego never enters the 0.6 s zone in front of a moving vehicle that is
  *    not following it (gap acceptance with a time margin instead of a 0.25 m footprint clearance);

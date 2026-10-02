@@ -48,13 +48,13 @@ teacher's probability mass).
 ## Training (summary; code not released yet)
 
 * Labels: the privileged teacher's soft distribution over offered behaviours (mass spread over
-  behaviours whose world rollouts are indistinguishable). DriveJev 1.1 labels come from the *observable* teacher
-  ([simulator.md](simulator.md#observable-teacher-11)), whose rollouts only contain road users the student's
+  behaviours whose world rollouts are indistinguishable). DriveJev 1.0 labels come from the *observable* teacher
+  ([simulator.md](simulator.md#observable-teacher)), whose rollouts only contain road users the student's
   perception has seen.
 * Data: teacher-driven episodes (5 % of decision slots perturbed for 1 s to visit recoverable mistakes),
   hazard-dense episodes, and DAgger rounds in which the model drives and the teacher labels every visited state.
   Labels that depended on information the student cannot observe were removed.
 * Objective: soft-target cross-entropy with square-root inverse-frequency class weights; selection on validation seeds only.
-* DriveJev 1.1: the 1.0 data plus teacher-driven interaction episodes (all nine hazard and interaction kinds) and
+* DriveJev 1.0: the base-world data of the preview (h4) plus teacher-driven interaction episodes (all nine hazard and interaction kinds) and
   interaction DAgger rounds; decisions that the teacher changed because of a predicted interaction conflict (wait for
   a gap, yield, brake) are weighted ×3 (they are ~6 % of the labels but decide most interaction outcomes).

@@ -1,5 +1,5 @@
 /**
- * DriveJev 1.1 interaction world: the DriveJev 1.0 world (full JevPilot traffic, random routes, 1.0 hazards) plus six
+ * DriveJev interaction world: the base world (full JevPilot traffic, random routes, the three base hazards) plus six
  * multi-agent / high-risk interaction scenarios activated by InteractionDirector:
  *
  *  oncoming        ego turns left on green  -> a platoon of 2-4 oncoming cars with right of way (they do not yield);
@@ -10,8 +10,8 @@
  *  cut_in          a kerb-parked car pulls out ahead (interstate: neighbour lane cuts in) and may brake
  *  turn_ped        1-3 pedestrians cross the exit road while the ego turns
  *
- * DriveWorld and the 1.0 HazardDirector are imported unchanged. With `legacyHazards: true` the 1.0 director is
- * kept, so 1.0 suites replay exactly (extra hazard agents stay parked far away).
+ * DriveWorld and the base HazardDirector are imported unchanged. With `legacyHazards: true` the base director is
+ * kept, so the base suites replay exactly (extra hazard agents stay parked far away).
  */
 import { DriveWorld, HazardDirector, HAZARD_KINDS as BASE_KINDS } from './world.mjs';
 import { makeRoute, signalState } from '../third_party/jevpilot/src/world.js';
@@ -51,7 +51,7 @@ export class InteractionWorld extends DriveWorld {
       const p = { id: `pedestrian-${900 + k}`, type: 'pedestrian', nodeId: this.world.nodes[0]?.id, x: PARK.x - 50 * k, z: PARK.z, progress: 0,
         walkPath: { start: { x: PARK.x - 50 * k, z: PARK.z }, heading: 0, length: 1 }, direction: 0, crossing: false, walking: false,
         speed: 0, width: 0.6, depth: 0.6, height: 1.7, hazard: { kind: 'jaywalker', state: 'parked' } };
-      // Legacy (1.0) replays keep the 1.0 pool of two pedestrians and two cars; extras stay parked.
+      // Legacy (base-suite) replays keep the base pool of two pedestrians and two cars; extras stay parked.
       this.pedestrians.push(p); if (!options.legacyHazards) this.hazardPeds.push(p);
     }
     for (let k = 2; k < 2 + EXTRA_CARS; k++) {
@@ -103,7 +103,7 @@ export class InteractionWorld extends DriveWorld {
   }
 }
 
-/** 1.0 director + six interaction scenarios; tries every requested kind in priority order (no stalling on unavailable kinds). */
+/** Base director + six interaction scenarios; tries every requested kind in priority order (no stalling on unavailable kinds). */
 export class InteractionDirector extends HazardDirector {
   cloneFor(sim) {
     const d = super.cloneFor(sim);
@@ -189,7 +189,7 @@ export class InteractionDirector extends HazardDirector {
         this.record({ kind: 'occluded_ped', event: 'walk', ego_distance_m: d, ego_speed_mps: v.speed });
       }
     }
-    super.before(dt); // 1.0 agent updates (pedestrian triggers, lead brake, parking); rotation handled below
+    super.before(dt); // base agent updates (pedestrian triggers, lead brake, parking); rotation handled below
     this.kinds = kinds;
     for (const car of sim.hazardCars) {
       const h = car.hazard;

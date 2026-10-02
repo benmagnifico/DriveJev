@@ -5,14 +5,14 @@ with traffic, pedestrians, traffic lights, stop signs and optional scripted haza
 and watch every decision live: what the model saw, which behaviours it was offered, the probability it gave each
 one, and whether the executor applied the answer.
 
-<p align="center"><img src="screenshots/drivejev-1.1-oncoming.jpg" alt="DriveJev 1.1 waiting for an oncoming car during a left turn in the JevPilot city" width="90%"><br>
-<sub>Skyline City with the interaction scenarios on: DriveJev 1.1 turns left as the light goes amber, waits inside the junction for an
+<p align="center"><img src="screenshots/drivejev-oncoming.jpg" alt="DriveJev 1.0 waiting for an oncoming car during a left turn in the JevPilot city" width="90%"><br>
+<sub>Skyline City with the interaction scenarios on: DriveJev 1.0 turns left as the light goes amber, waits inside the junction for an
 oncoming car with right of way and chooses <i>Hold</i> (97 %). The panel shows the model input — wide frames at t and t−0.5 s and the tele
 frame — the student state (a car 7.7 m to the right, conflict in 1.8 s; junction box: oncoming vehicle 1.2 s away) and the probability of every
 offered behaviour.</sub></p>
 
 <p align="center"><img src="screenshots/drivejev-city-hazard.png" alt="DriveJev yielding to a pedestrian crossing in front of it in the JevPilot city" width="70%"><br>
-<sub>DriveJev 1.0, Skyline City with hazards on: a pedestrian steps into the road and DriveJev chooses <i>Yield</i> (96 %), slowing to
+<sub>DriveJev preview (h4, an unreleased development model), Skyline City with hazards on: a pedestrian steps into the road and DriveJev chooses <i>Yield</i> (96 %), slowing to
 23 km/h. The panel shows the model input — wide frames at t and t−0.5 s and the tele frame (the pedestrian is clearest in
 the tele view) — the student state with the predicted conflict, and the probability of every offered behaviour.</sub></p>
 
@@ -48,8 +48,8 @@ Optional environment variables for `start.sh`: `PYTHON` (interpreter), `WEB_PORT
 | `world=town\|city\|highway` | driving scene (default `town`) |
 | `seed=<int>` | world seed (random if omitted; random demo worlds avoid the training/validation/test seeds 300000–329999) |
 | `route=default` | keep JevPilot's default route in town/city (otherwise a seeded random route across the grid; the interstate always uses its default route) |
-| `hazards=1` | scripted hazard and interaction scenarios, one at most every 9–16 s: the three 1.0 hazards (jaywalker, red-light / stop-sign runner, hard-braking lead) and the six 1.1 interactions (oncoming platoon / left-turner, 4-way-stop contention, late red-light runner after your green, pedestrian hidden behind a parked car, cut-in, pedestrians at the turn); the interstate only has cut-ins |
-| `hazards=storm` / `hazards=classic` / `hazards=oncoming,cut_in,…` | all kinds back to back (4 s cooldown) / only the three 1.0 hazards / only the listed kinds |
+| `hazards=1` | scripted hazard and interaction scenarios, one at most every 9–16 s: the three base hazards (jaywalker, red-light / stop-sign runner, hard-braking lead) and the six interaction scenarios (oncoming platoon / left-turner, 4-way-stop contention, late red-light runner after your green, pedestrian hidden behind a parked car, cut-in, pedestrians at the turn); the interstate only has cut-ins |
+| `hazards=storm` / `hazards=classic` / `hazards=oncoming,cut_in,…` | all kinds back to back (4 s cooldown) / only the three base hazards / only the listed kinds |
 | `aeb=off` | start with collision-mitigation braking off (on by default in the demo) |
 | `pilot=drivejev\|teacher\|kev\|jev` | initial pilot |
 | `arm=<name>` | decision head to request when the model service serves several (default `default`) |
@@ -71,7 +71,7 @@ Optional environment variables for `start.sh`: `PYTHON` (interpreter), `WEB_PORT
 | Pilot | Input | Output |
 | --- | --- | --- |
 | **DriveJev (ours)** | wide front frames at t−0.5 s and t (640×384), tele frame at t (384×224), the whitelisted student state, the offered behaviours | probabilities over the behaviours → semantic executor |
-| Reference teacher (privileged) | true signal / stop rule + a 4.5 s rollout per behaviour of the road users its perception has seen (the 1.1 observable teacher); no camera | the teacher's preferred behaviour → semantic executor |
+| Reference teacher (privileged) | true signal / stop rule + a 4.5 s rollout per behaviour of the road users its perception has seen (the observable teacher); no camera | the teacher's preferred behaviour → semantic executor |
 | Kev (local, optional) | JevPilot's structured state + sampled path candidates | Jev-style choice probabilities |
 | Jev (cloud, optional) | same as Kev, via the OpenRouter Decisions API (`~typesafe/jev-latest`) | same; token use and cost are shown |
 
@@ -87,7 +87,7 @@ in the wide and tele frames, and the latest answer arrived 300 ms after its fram
 - **Model input** — the wide frame at t, with the wide frame at t−0.5 s and the tele frame side by side below it
   (a live preview of the same cameras before you engage), and the **student state** the model reads as text: speed and
   time stationary, junction control and stop-line distance, whether the stop has been completed, lead-vehicle gap
-  and speed, the predicted path conflict (type, time, distance, side), junction occupancy and (1.1) the time until the
+  and speed, the predicted path conflict (type, time, distance, side), junction occupancy and the time until the
   nearest oncoming / crossing vehicle reaches the junction. The reference teacher
   also shows the ground truth it reads.
 - **Decision** — one bar per offered behaviour (cruise, stop at line, hold, proceed, turn, yield, continue, emergency
@@ -113,7 +113,7 @@ The DriveJev pilot is fed exactly as in `simulator/harness.mjs`:
 - **4 Hz decisions.** Observation and capture every 5 steps, the history frame exactly 10 steps (0.5 s) back,
   cruise/hold bootstrap until the first decision, at most one request in flight (new frames are not queued), and an
   answer is applied only if its observation is at most 0.5 s old and the chosen behaviour is still offered. The
-  request body is the harness's (`drivejev-online-1.0`, three images in fixed order).
+  request body is the harness's (`drivejev-online-1.1`, three images in fixed order).
 - **Safety in the demo.** If no answer arrives for 2.5 s the executor brakes; three failed requests in a row disengage
   the pilot.
 - All modules are loaded through repository-shaped URLs (`/third_party/jevpilot/src/…`, `/simulator/…`), so

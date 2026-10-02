@@ -37,7 +37,8 @@ STUDENT_FIELDS = {
 TRAFFIC_FIELDS = {
     "lead": {"gap_m", "speed_mps"},
     "hazard": {"type", "in_s", "distance_m", "side"},
-    # 1.1: time until the nearest perceived oncoming / crossing vehicle reaches the junction box (1.0 heads never see them).
+    # Observation schema 1.1: time until the nearest perceived oncoming / crossing vehicle reaches the junction box
+    # (schema-1.0 heads never see them).
     "junction": {"vehicles_inside", "cross_approaching", "pedestrians_crossing", "earlier_arrivals", "oncoming_eta_s", "cross_eta_s"},
 }
 

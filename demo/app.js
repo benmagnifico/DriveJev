@@ -70,7 +70,7 @@ const params = new URLSearchParams(location.search),
 let worldKind = THEMES[requested] ? requested : "town";
 // World options: `route=default` keeps JevPilot's default route (otherwise a seeded random route
 // over the grid; the interstate always uses its default route), `hazards=1` enables the scripted
-// hazard and interaction scenarios (`hazards=classic`: only the three 1.0 hazards; `hazards=storm`:
+// hazard and interaction scenarios (`hazards=classic`: only the three base hazards; `hazards=storm`:
 // all of them back to back).
 const routeMode = params.get("route") === "default" ? "default" : "random";
 // `hazards=oncoming,green_runner,...` restricts the scenarios to the listed kinds.
@@ -78,7 +78,7 @@ const HAZARD_MODES = { 1: "all", on: "all", true: "all", all: "all", classic: "c
 const listedKinds = (params.get("hazards") ?? "").split(",").filter((k) => ALL_KINDS.includes(k));
 let hazardMode = listedKinds.length ? "list" : HAZARD_MODES[params.get("hazards")] ?? "all";
 let hazardsOn = params.get("hazards") in HAZARD_MODES || listedKinds.length > 0;
-// The interstate only has neighbour-lane cut-ins (junction scenarios cannot be placed there); the 1.0
+// The interstate only has neighbour-lane cut-ins (junction scenarios cannot be placed there); the base
 // junction runner is left out on the interstate as before.
 const hazardKinds = (kind) =>
   hazardMode === "classic" ? HAZARD_KINDS.filter((k) => kind !== "highway" || k !== "cross_runner")
