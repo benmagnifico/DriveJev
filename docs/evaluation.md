@@ -1,6 +1,36 @@
 # Evaluation
 
-## Protocol
+DriveJev 1.1 adds an **interaction benchmark** (six multi-agent scenarios on top of the three 1.0 hazards, see
+[scenarios.md](scenarios.md)); the 1.0 suites are kept unchanged and replay exactly (`legacyHazards: true`).
+Section 1 covers the interaction suites, section 2 the 1.0 suites.
+
+## 1. Interaction suites (DriveJev 1.1)
+
+### Protocol
+
+* **Suites.** `eval/suites/interaction_val.json` (24 episodes, seeds 411000–411023) is used for every 1.1 model-selection
+  decision; `eval/suites/interaction_test.json` (35 episodes, seeds 420000–420035 without 420018) is run once per reported
+  configuration. Families: `interaction` (all nine hazard kinds, shuffled per seed, 9 s cooldown) in town and city,
+  `storm` (4 s cooldown) and the interstate with cut-ins. Time limit 160 s (interstate 130 s).
+* Same batch / real-time protocols, metrics and AEB convention as below. 1.0 heads are evaluated with
+  `obs_schema: '1.0'`, i.e. exactly the observation they were trained on.
+* **Hazard collisions**: episodes that ended in contact with a scripted hazard agent, per kind, against the number of
+  activations of that kind (episodes end at the first collision, so later hazards of a crashed episode never activate).
+* **Stuck (1.1)**: stationary although the rule allows motion, no vehicle within 4 m ahead *and* the perception
+  predictor reports no conflict for moving on (waiting for an oncoming gap is not counted).
+
+```bash
+node simulator/run.mjs --jobs eval/suites/interaction_test.json --out runs/itest --workers 4 --model-url http://127.0.0.1:9031/predict
+node simulator/run.mjs --jobs eval/suites/interaction_test.json --out runs/itest-teacher --set policy=teacher   # upper bound, no GPU
+node simulator/run.mjs --jobs eval/suites/interaction_test.json --out runs/itest-v10 --set obs_schema=1.0      # a 1.0 head
+python eval/summarize.py runs/itest runs/itest-teacher
+```
+
+<!-- INTERACTION_RESULTS -->
+
+## 2. DriveJev 1.0 suites
+
+### Protocol
 
 * **Suites.** `eval/suites/val.json` (15 episodes, seeds 311000–311014) is used for every model-selection decision;
   `eval/suites/test.json` (28 episodes, seeds 320000–320027) is run once per reported model. Both mix town and city
@@ -13,7 +43,7 @@
   reported separately and never mixed into the main numbers.
 * Every episode ends at arrival, at a collision, or at the time limit (120 s; 100 s on validation; 110 s on the interstate).
 
-## Metrics
+### Metrics
 
 | Metric | Definition |
 |---|---|
@@ -31,7 +61,7 @@ node simulator/run.mjs --jobs eval/suites/test.json --out runs/test-ours --worke
 python eval/summarize.py runs/test-ours
 ```
 
-## Test suite (28 episodes, batch closed loop unless stated)
+### Test suite (28 episodes, batch closed loop unless stated)
 
 | Policy | Inputs | Success ↑ | Collisions ↓ | Violations ↓ | Route done | Stuck s/ep ↓ | Mean speed m/s |
 |---|---|---|---|---|---|---|---|
@@ -70,7 +100,7 @@ AEB was triggered 23 times over the 28 AEB-on episodes of the released model. "E
 brake" uses JevPilot's own speed envelope (following distance and swept-path conflict braking), the configuration of
 the original demo.
 
-## Validation suite (15 episodes) — the data used for every model decision
+### Validation suite (15 episodes) — the data used for every model decision
 
 | Model | Data | Success | Collisions | Violations | Stuck s/ep | Arrival |
 |---|---|---|---|---|---|---|
@@ -98,13 +128,13 @@ The LoRA variant was to be adopted only if it beat round 3 on validation (more s
 fewer collisions + violations); it tied (10/15, 5 vs 5), so it was not adopted. Its single test run is reported as an
 ablation. The validation timeout is 100 s, which is why even the teacher misses some long hazard episodes.
 
-## Offline agreement
+### Offline agreement
 
 Fraction of held-out validation states (2,528, seeds 310000+) where the argmax is in the teacher's set of equivalent
 behaviours: 98.1–98.5 % for every head and round, and 98.4 % for the state-only ablation. The current behaviour is
 part of the state, so copying it is usually right; offline agreement does not predict closed-loop quality.
 
-## Notes
+### Notes
 
 * Batch closed-loop results are deterministic for a given seed and model; real-time results depend on latency.
 * `HazardDirector` tries the hazard kinds of an episode in a fixed rotation and waits until the current kind can be

@@ -1,0 +1,112 @@
+{
+ "student_obs": {
+  "ego": {
+   "speed_mps": 0,
+   "acceleration_mps2": 0,
+   "steering": 0,
+   "route_offset_m": 0.01,
+   "heading_error_deg": -1.7,
+   "stationary_s": 8.9
+  },
+  "nav": {
+   "remaining_m": 442.5,
+   "next_turn": "left",
+   "turn_distance_m": 12.9,
+   "speed_limit_mps": 18,
+   "junction_control": "signal",
+   "stop_line_ahead_m": 0.6,
+   "stop_completed": true
+  },
+  "maneuver": {
+   "action_type": "hold_stop",
+   "target_id": null,
+   "elapsed_s": 8.7,
+   "progress_m": 0,
+   "status": "active",
+   "feedback": []
+  },
+  "recent_actions": [
+   {
+    "action_type": "keep_route_cruise",
+    "age_s": 17.2
+   },
+   {
+    "action_type": "stop_at_line",
+    "age_s": 16
+   },
+   {
+    "action_type": "hold_stop",
+    "age_s": 8.7
+   }
+  ],
+  "traffic": {
+   "lead": null,
+   "hazard": null,
+   "junction": {
+    "vehicles_inside": 0,
+    "cross_approaching": 0,
+    "pedestrians_crossing": 0,
+    "earlier_arrivals": 0,
+    "oncoming_eta_s": 2.4,
+    "cross_eta_s": null
+   }
+  }
+ },
+ "candidates": [
+  {
+   "candidate_id": "hold_stop",
+   "action_type": "hold_stop",
+   "target_id": null,
+   "speed_profile": "zero",
+   "description": "Remain stationary."
+  },
+  {
+   "candidate_id": "proceed_route",
+   "action_type": "proceed_route",
+   "target_id": null,
+   "speed_profile": "smooth_start",
+   "description": "Resume forward driving along the navigation route."
+  },
+  {
+   "candidate_id": "route_turn",
+   "action_type": "route_turn",
+   "target_id": "j3-4",
+   "speed_profile": "turn",
+   "description": "Enter and follow the navigation turn through the current junction."
+  },
+  {
+   "candidate_id": "emergency_brake",
+   "action_type": "emergency_brake",
+   "target_id": null,
+   "speed_profile": "maximum_brake",
+   "description": "Apply maximum braking immediately in the current lane."
+  }
+ ],
+ "images": [
+  {
+   "camera": "front",
+   "relative_time": -0.5,
+   "path": "front_t-0.5.png"
+  },
+  {
+   "camera": "front",
+   "relative_time": 0,
+   "path": "front_t0.png"
+  },
+  {
+   "camera": "front_tele",
+   "relative_time": 0,
+   "path": "tele_t0.png"
+  }
+ ],
+ "reference_teacher": {
+  "preferred": "hold_stop",
+  "probabilities": {
+   "hold_stop": 1,
+   "proceed_route": 0,
+   "route_turn": 0,
+   "emergency_brake": 0
+  },
+  "teacher": "observable-rollout-teacher-1.1"
+ }
+}

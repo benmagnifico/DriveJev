@@ -65,7 +65,7 @@ Optional environment variables for `start.sh`: `PYTHON` (interpreter), `WEB_PORT
 | Pilot | Input | Output |
 | --- | --- | --- |
 | **DriveJev (ours)** | wide front frames at t−0.5 s and t (640×384), tele frame at t (384×224), the whitelisted student state, the offered behaviours | probabilities over the behaviours → semantic executor |
-| Reference teacher (privileged) | true signal / stop rule + a 3.5 s whole-world rollout per behaviour; no camera | the teacher's preferred behaviour → semantic executor |
+| Reference teacher (privileged) | true signal / stop rule + a 4.5 s rollout per behaviour of the road users its perception has seen (the 1.1 observable teacher); no camera | the teacher's preferred behaviour → semantic executor |
 | Kev (local, optional) | JevPilot's structured state + sampled path candidates | Jev-style choice probabilities |
 | Jev (cloud, optional) | same as Kev, via the OpenRouter Decisions API (`~typesafe/jev-latest`) | same; token use and cost are shown |
 
@@ -81,7 +81,8 @@ in the wide and tele frames, and the latest answer arrived 300 ms after its fram
 - **Model input** — the wide frame at t, with the wide frame at t−0.5 s and the tele frame side by side below it
   (a live preview of the same cameras before you engage), and the **student state** the model reads as text: speed and
   time stationary, junction control and stop-line distance, whether the stop has been completed, lead-vehicle gap
-  and speed, the predicted path conflict (type, time, distance, side) and junction occupancy. The reference teacher
+  and speed, the predicted path conflict (type, time, distance, side), junction occupancy and (1.1) the time until the
+  nearest oncoming / crossing vehicle reaches the junction. The reference teacher
   also shows the ground truth it reads.
 - **Decision** — one bar per offered behaviour (cruise, stop at line, hold, proceed, turn, yield, continue, emergency
   brake); `chosen` marks the answer, `▶ driving` what the executor is doing, and the line below says whether the

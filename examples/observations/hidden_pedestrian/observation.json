@@ -1,0 +1,118 @@
+{
+ "student_obs": {
+  "ego": {
+   "speed_mps": 14,
+   "acceleration_mps2": 0,
+   "steering": 0,
+   "route_offset_m": 0,
+   "heading_error_deg": 0,
+   "stationary_s": 0
+  },
+  "nav": {
+   "remaining_m": 330.7,
+   "next_turn": "straight",
+   "turn_distance_m": 84.8,
+   "speed_limit_mps": 14,
+   "junction_control": "signal",
+   "stop_line_ahead_m": 72.4,
+   "stop_completed": false
+  },
+  "maneuver": {
+   "action_type": "stop_at_line",
+   "target_id": "j2-2",
+   "elapsed_s": 0.7,
+   "progress_m": 10.5,
+   "status": "active",
+   "feedback": []
+  },
+  "recent_actions": [
+   {
+    "action_type": "proceed_route",
+    "age_s": 5.2
+   },
+   {
+    "action_type": "keep_route_cruise",
+    "age_s": 5
+   },
+   {
+    "action_type": "stop_at_line",
+    "age_s": 0.7
+   }
+  ],
+  "traffic": {
+   "lead": null,
+   "hazard": {
+    "type": "pedestrian",
+    "in_s": 1.9,
+    "distance_m": 26.6,
+    "side": "right"
+   },
+   "junction": null
+  }
+ },
+ "candidates": [
+  {
+   "candidate_id": "keep_route_cruise",
+   "action_type": "keep_route_cruise",
+   "target_id": null,
+   "speed_profile": "cruise",
+   "description": "Follow the navigation route at the road speed limit, keeping a safe gap to the vehicle ahead."
+  },
+  {
+   "candidate_id": "stop_at_line",
+   "action_type": "stop_at_line",
+   "target_id": "j2-2",
+   "speed_profile": "line_stop",
+   "description": "Approach and stop with the front bumper 0.5 m before the current stop line."
+  },
+  {
+   "candidate_id": "yield_agent",
+   "action_type": "yield_agent",
+   "target_id": null,
+   "speed_profile": "yield_stop",
+   "description": "Brake comfortably and stop short of the road user predicted to cross the path."
+  },
+  {
+   "candidate_id": "continue_current",
+   "action_type": "continue_current",
+   "target_id": "j2-2",
+   "speed_profile": "retain",
+   "description": "Continue the current maneuver with its fixed target."
+  },
+  {
+   "candidate_id": "emergency_brake",
+   "action_type": "emergency_brake",
+   "target_id": null,
+   "speed_profile": "maximum_brake",
+   "description": "Apply maximum braking immediately in the current lane."
+  }
+ ],
+ "images": [
+  {
+   "camera": "front",
+   "relative_time": -0.5,
+   "path": "front_t-0.5.png"
+  },
+  {
+   "camera": "front",
+   "relative_time": 0,
+   "path": "front_t0.png"
+  },
+  {
+   "camera": "front_tele",
+   "relative_time": 0,
+   "path": "tele_t0.png"
+  }
+ ],
+ "reference_teacher": {
+  "preferred": "yield_agent",
+  "probabilities": {
+   "keep_route_cruise": 0,
+   "stop_at_line": 0,
+   "yield_agent": 1,
+   "continue_current": 0,
+   "emergency_brake": 0
+  },
+  "teacher": "observable-rollout-teacher-1.1"
+ }
+}
