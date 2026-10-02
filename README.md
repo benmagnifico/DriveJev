@@ -5,9 +5,9 @@
 <p align="center">
   <a href="https://huggingface.co/benmagnifico/DriveJev-4B">Model</a> &nbsp;|&nbsp;
   <a href="#live-demo">Live demo</a> &nbsp;|&nbsp;
-  <a href="docs/evaluation.md">Evaluation</a> &nbsp;|&nbsp;
-  <a href="https://github.com/standardagents/jevpilot">JevPilot simulator</a>
+  <a href="docs/evaluation.md">Evaluation</a>
 </p>
+
 
 <table>
   <tr>
@@ -265,11 +265,11 @@ DriveJev/
 
 DriveJev builds on [Qwen-Drive-1.0](https://huggingface.co/Qwen/Qwen-Drive-1.0-4B) (the vision-language backbone and
 its image processing), [JevPilot](https://github.com/standardagents/jevpilot) (the driving world, physics, traffic and
-rules), and the decision-model idea of TypeSafe's Jev and its open reconstruction Kev.
+rules), and the decision-model idea of TypeSafe's Jev and its open reconstruction [Kev](https://github.com/jaredpalmer/kev).
 
 ## Citation
 
-If you find DriveJev helpful, feel free to cite it.
+If you find DriveJev helpful, please cite it.
 
 ```bibtex
 @misc{li2026drivejev,
