@@ -1,9 +1,6 @@
 # Simulator, executor and observation contract
 
-DriveJev drives inside [JevPilot](https://github.com/standardagents/jevpilot), a three.js driving
-playground with procedurally generated towns, cities and an interstate, scripted traffic and
-pedestrians, traffic lights and stop signs. JevPilot is used unmodified (git submodule
-`third_party/jevpilot`); everything DriveJev adds lives in `simulator/`.
+DriveJev drives inside [JevPilot](https://github.com/standardagents/jevpilot), a three.js driving playground with procedurally generated towns, cities and an interstate, scripted traffic and pedestrians, traffic lights and stop signs. JevPilot is used unmodified (git submodule `third_party/jevpilot`); everything DriveJev adds lives in `simulator/`.
 
 | File | Role |
 |---|---|
@@ -17,16 +14,10 @@ pedestrians, traffic lights and stop signs. JevPilot is used unmodified (git sub
 
 ## Clock
 
-Physics always steps at a fixed `DT = 0.05 s` (20 Hz). Every 5 steps (4 Hz) the harness renders the
-cameras and may ask the model for a decision. The history frame is the frame captured exactly
-10 steps (0.5 s) earlier. The observation is serialized as JSON text inside the prompt, so a
-variable time step would feed the model numbers it never saw; displays interpolate instead.
+Physics always steps at a fixed `DT = 0.05 s` (20 Hz). Every 5 steps (4 Hz) the harness renders the cameras and may ask the model for a decision. The history frame is the frame captured exactly 10 steps (0.5 s) earlier. The observation is serialized as JSON text inside the prompt, so a variable time step would feed the model numbers it never saw; displays interpolate instead.
 
-* **Batch closed loop** (`runEpisode`): the world waits for every model answer (zero-latency upper bound,
-  the same convention as synchronous CARLA evaluation).
-* **Real-time closed loop** (`runRealtime`): physics follows the wall clock and never waits; at most one
-  request is in flight; an answer is applied only if its observation is at most 0.5 s old and the chosen
-  behaviour is still offered with the same target.
+* **Batch closed loop** (`runEpisode`): the world waits for every model answer (zero-latency upper bound, the same convention as synchronous CARLA evaluation).
+* **Real-time closed loop** (`runRealtime`): physics follows the wall clock and never waits; at most one request is in flight; an answer is applied only if its observation is at most 0.5 s old and the chosen behaviour is still offered with the same target.
 
 ## Cameras
 
@@ -35,10 +26,7 @@ variable time step would feed the model numbers it never saw; displays interpola
 | `front` (t−0.5 s and t) | 640×384 | 90° | +10° | scene, near signals, motion |
 | `front_tele` (t) | 384×224 | 15° | +2° | traffic lights, pedestrians and vehicles 40 to 90 m ahead |
 
-Both are rendered from a dedicated scene built with JevPilot's training render profile (pixel ratio 1,
-no antialiasing, no shadows, low foliage) at 1.6 m height, with the ego car and all annotations hidden.
-In the 90° wide view a traffic-light lens 50 m away covers about one pixel; in the tele view it covers
-about five, which is what makes stopping from city speed (18 m/s) possible.
+Both are rendered from a dedicated scene built with JevPilot's training render profile (pixel ratio 1, no antialiasing, no shadows, low foliage) at 1.6 m height, with the ego car and all annotations hidden. In the 90° wide view a traffic-light lens 50 m away covers about one pixel; in the tele view it covers about five, which is what makes stopping from city speed (18 m/s) possible.
 
 ## Behaviours (candidates)
 
@@ -84,41 +72,22 @@ Only these fields are serialized (the compiler rejects anything else, so simulat
 ```
 
 * `junction_control` is static map information; `stop_completed` and `stationary_s` are the ego car's own memory.
-* `traffic.*` is computed only from objects reported by JevPilot's sensor scan (range ≥ 80 m, 360°, occluded by
-  buildings). Other vehicles' planned routes are removed before prediction (constant-velocity extrapolation).
-* Perception also lets **vehicles occlude**: a pedestrian is hidden when the line of sight from the camera passes
-  through a car's footprint, a vehicle when its centre and both ends are hidden; anything within 6 m is always
-  perceived. A pedestrian behind a parked car is therefore missing from the state exactly as long as it is hidden
-  in the images.
-* `oncoming_eta_s` / `cross_eta_s`: the time until the nearest perceived oncoming / crossing vehicle that is closing on
-  the junction reaches the junction box (constant velocity; `null` beyond 12 s).
+* `traffic.*` is computed only from objects reported by JevPilot's sensor scan (range ≥ 80 m, 360°, occluded by buildings). Other vehicles' planned routes are removed before prediction (constant-velocity extrapolation).
+* Perception also lets **vehicles occlude**: a pedestrian is hidden when the line of sight from the camera passes through a car's footprint, a vehicle when its centre and both ends are hidden; anything within 6 m is always perceived. A pedestrian behind a parked car is therefore missing from the state exactly as long as it is hidden in the images.
+* `oncoming_eta_s` / `cross_eta_s`: the time until the nearest perceived oncoming / crossing vehicle that is closing on the junction reaches the junction box (constant velocity; `null` beyond 12 s).
 * **Signal colours are not in the observation**: the model has to see them.
 
 ## Teachers (privileged)
 
 ### Observable teacher
 
-`observableTeacher(executor)` labels the training data of DriveJev 1.0 and drives the privileged pilot of the demo. It
-reads JevPilot's rule state and rolls the world forward for every offered behaviour, like the reference teacher below,
-with four rules that keep every label explainable from the student's inputs:
+`observableTeacher(executor)` labels the training data of DriveJev 1.0 and drives the privileged pilot of the demo. It reads JevPilot's rule state and rolls the world forward for every offered behaviour, like the reference teacher below, with four rules that keep every label explainable from the student's inputs:
 
-1. **Only what the student could have seen.** A rollout contains only road users that the perception reported
-   in the last second (or that are within 8 m), so a label never reacts to a car hidden behind a building or a
-   pedestrian still hidden behind a parked car.
-2. **Gap acceptance with a time margin.** A behaviour is safe only if the ego never enters the zone a moving vehicle
-   will cover in the next 0.6 s (its footprint stretched forward), unless that vehicle is following the ego, so left
-   turns are never accepted just in front of an oncoming car.
-3. **Only rear-end contacts are excused.** A contact at low ego speed is excused only when another vehicle hits the
-   ego from behind, so waiting inside an oncoming lane is never labelled safe.
-4. **No braking into a near miss.** If every stopping behaviour collides while continuing only lacks margin, the
-   teacher continues; if everything collides it minimises the impact speed. The horizon is 4.5 s (gap acceptance
-   from standstill needs more than 3.5 s).
+1. **Only what the student could have seen.** A rollout contains only road users that the perception reported in the last second (or that are within 8 m), so a label never reacts to a car hidden behind a building or a pedestrian still hidden behind a parked car.
+2. **Gap acceptance with a time margin.** A behaviour is safe only if the ego never enters the zone a moving vehicle will cover in the next 0.6 s (its footprint stretched forward), unless that vehicle is following the ego, so left turns are never accepted just in front of an oncoming car.
+3. **Only rear-end contacts are excused.** A contact at low ego speed is excused only when another vehicle hits the ego from behind, so waiting inside an oncoming lane is never labelled safe.
+4. **No braking into a near miss.** If every stopping behaviour collides while continuing only lacks margin, the teacher continues; if everything collides it minimises the impact speed. The horizon is 4.5 s (gap acceptance from standstill needs more than 3.5 s).
 
 ### Reference teacher
 
-`referenceTeacher(executor)` reads JevPilot's rule state (signal phase, stop-sign service, junction reservations, first
-arrival) and rolls the **whole world** forward 3.5 s for each candidate on a dynamic-state clone, so NPCs react to
-the ego as they would in reality. Pending hazard triggers that the ego could not yet observe stay frozen inside
-the rollout. It picks the most progressive behaviour that is safe (no at-fault contact, clearance > 0.25 m) and
-legal, and spreads probability over behaviours whose rollouts are indistinguishable. It is the upper-bound reference
-of the base test suite, not part of the model.
+`referenceTeacher(executor)` reads JevPilot's rule state (signal phase, stop-sign service, junction reservations, first arrival) and rolls the **whole world** forward 3.5 s for each candidate on a dynamic-state clone, so NPCs react to the ego as they would in reality. Pending hazard triggers that the ego could not yet observe stay frozen inside the rollout. It picks the most progressive behaviour that is safe (no at-fault contact, clearance > 0.25 m) and legal, and spreads probability over behaviours whose rollouts are indistinguishable. It is the upper-bound reference of the base test suite, not part of the model.

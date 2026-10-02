@@ -8,16 +8,11 @@
 | `city` | Skyline City, 5×5 grid, tall buildings | 18 m/s | 28 vehicles, 26 pedestrians | same, longer blocks, heavy occlusion |
 | `highway` | Interstate 08 | 28 m/s | 18 vehicles | on-ramp, merge, exit, town arrival |
 
-Every town/city episode uses a **seeded random route**: a random start node and a destination more than
-260 m away (≤ 850 m route), reached by JevPilot's no-U-turn shortest path. Routes therefore cover every junction
-type and turn direction instead of a single scripted junction. Highway episodes use the
-JevPilot route.
+Every town/city episode uses a **seeded random route**: a random start node and a destination more than 260 m away (≤ 850 m route), reached by JevPilot's no-U-turn shortest path. Routes therefore cover every junction type and turn direction instead of a single scripted junction. Highway episodes use the JevPilot route.
 
 ## Hazard scenarios
 
-Hazards are activated by `HazardDirector` relative to the ego route, using agents that are allocated before the
-3-D scene is built (so they are rendered in the cameras). After one hazard, the next one of the episode's
-list is tried after a cooldown (10 to 18 s by default).
+Hazards are activated by `HazardDirector` relative to the ego route, using agents that are allocated before the 3-D scene is built (so they are rendered in the cameras). After one hazard, the next one of the episode's list is tried after a cooldown (10 to 18 s by default).
 
 | Hazard | What happens | Why it is hard |
 |---|---|---|
@@ -27,11 +22,7 @@ list is tried after a cooldown (10 to 18 s by default).
 
 ## Interaction scenarios
 
-`simulator/interactions.mjs` adds six multi-agent scenarios on top of the three hazards above
-(`InteractionWorld` = the base `DriveWorld` with a larger pool of pre-allocated agents; `InteractionDirector` tries every
-requested kind in priority order whenever the cooldown has expired, so kinds that need a particular junction do not
-block the others). Each one needs a *decision* (wait, yield, brake or go) rather than only a reflex, and most
-involve several agents that react to the ego through JevPilot's own rules.
+`simulator/interactions.mjs` adds six multi-agent scenarios on top of the three hazards above (`InteractionWorld` = the base `DriveWorld` with a larger pool of pre-allocated agents; `InteractionDirector` tries every requested kind in priority order whenever the cooldown has expired, so kinds that need a particular junction do not block the others). Each one needs a *decision* (wait, yield, brake or go) rather than only a reflex, and most involve several agents that react to the ego through JevPilot's own rules.
 
 | Scenario | What happens | Why it is hard |
 |---|---|---|
@@ -51,17 +42,9 @@ Configurations used for training and evaluation:
 | `storm` | all nine kinds | 4 s (hazards back to back or overlapping) |
 | `highway` | `cut_in` | 10 s |
 
-Rules that keep the scenarios fair: a staged pedestrian whose crossing point the ego front has already reached
-never steps out (it would walk into the side of the car); in interaction worlds NPC vehicles (except red-light runners) stop
-for scripted pedestrians in their lane (JevPilot NPCs otherwise only yield on junction crosswalks and would drive
-through a jaywalker, hiding it from the ego); `preflight.mjs` drops seeds whose initial state already overlaps an NPC
-(a JevPilot spawn artefact). With these rules the observable teacher drives the interaction test suite with 0
-collisions (34/35 clean, one time-out). With `legacyHazards: true` the base director and agent pool
-are used, so the base suites replay exactly.
+Rules that keep the scenarios fair: a staged pedestrian whose crossing point the ego front has already reached never steps out (it would walk into the side of the car); in interaction worlds NPC vehicles (except red-light runners) stop for scripted pedestrians in their lane (JevPilot NPCs otherwise only yield on junction crosswalks and would drive through a jaywalker, hiding it from the ego); `preflight.mjs` drops seeds whose initial state already overlaps an NPC (a JevPilot spawn artefact). With these rules the observable teacher drives the interaction test suite with 0 collisions (34/35 clean, one time-out). With `legacyHazards: true` the base director and agent pool are used, so the base suites replay exactly.
 
-All hazard parameters are drawn from a per-world seeded RNG, so a `(world, seed, hazards)` triple replays
-exactly. JevPilot's own interactions (stop-sign arrival order, junction reservations, queues at lights,
-pedestrians crossing in the all-red walk phase, turning traffic, highway merges) are present in every episode.
+All hazard parameters are drawn from a per-world seeded RNG, so a `(world, seed, hazards)` triple replays exactly. JevPilot's own interactions (stop-sign arrival order, junction reservations, queues at lights, pedestrians crossing in the all-red walk phase, turning traffic, highway merges) are present in every episode.
 
 ## Suites
 
@@ -72,6 +55,4 @@ pedestrians crossing in the all-red walk phase, turning traffic, highway merges)
 | interaction validation (model selection only) | `eval/suites/interaction_val.json` | 411000 to 411023 | 9 town + 9 city `interaction`, 2 + 2 `storm`, 2 interstate |
 | interaction test (reported once per model) | `eval/suites/interaction_test.json` | 420000 to 420035 (420018 dropped by preflight) | 12 town + 11 city `interaction`, 4 + 4 `storm`, 4 interstate |
 
-Interaction episodes have a 160 s limit (interstate 130 s): with hazards every 9 to 16 s even the reference teacher
-needs up to ~150 s for an 850 m route. Training data used disjoint seeds (301000 to 309999 and 401000 to 409999;
-310000 to 310017 and 410000 to 410019 for offline validation).
+Interaction episodes have a 160 s limit (interstate 130 s): with hazards every 9 to 16 s even the reference teacher needs up to ~150 s for an 850 m route. Training data used disjoint seeds (301000 to 309999 and 401000 to 409999; 310000 to 310017 and 410000 to 410019 for offline validation).
