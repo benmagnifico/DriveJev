@@ -2,15 +2,18 @@
  * DriveJev headless harness (one page = one worker). Episodes run inside the page with fixed
  * 0.05 s physics, 4 Hz capture/decision slots and a history frame exactly 10 steps back.
  *   policy 'model'   : DriveJev behind /predict
- *   policy 'teacher' : privileged reference teacher (upper bound, no cameras)
+ *   policy 'teacher' : privileged observable teacher (upper bound, no cameras)
+ * World: InteractionWorld (DriveJev 1.1: the 1.0 world + multi-agent interaction scenarios).
+ * cfg.obs_schema '1.1' (default) or '1.0' (1.0 heads: no vehicle occlusion, no junction ETA fields);
+ * cfg.legacyHazards replays 1.0 suites exactly (1.0 hazard director and agent pool).
  *   runEpisode       : batch closed loop (the world waits for each answer)
  *   runRealtime      : real-time closed loop (the world never waits)
  */
 import * as THREE from 'three';
 import { DriveScene } from '/third_party/jevpilot/src/scene.js';
 import { renderProfile } from '/third_party/jevpilot/src/render-profile.js';
-import { DriveWorld, WORLD_VERSION } from './world.mjs';
-import { SemanticExecutor, referenceTeacher, DT, VERSION } from './executor.mjs';
+import { InteractionWorld, WORLD_VERSION } from './interactions.mjs';
+import { InteractionExecutor, observableTeacher, DT, VERSION } from './interaction_executor.mjs';
 
 // JevPilot render profile used for every model frame.
 Object.assign(renderProfile, { pixelRatio: 1, antialias: false, shadowSize: 512, detailedFoliage: false, leafCards: 8 });
@@ -51,9 +54,11 @@ export function capture() {
 }
 
 export async function reset(cfg) {
-  config = { seed: 320000, type: 'town', hazards: [], randomRoute: true, trafficScale: 1, empty: false, aeb: false, ...cfg };
-  sim = new DriveWorld(config.seed, config.type, { randomRoute: config.randomRoute && config.type !== 'highway', hazards: config.hazards, trafficScale: config.trafficScale, empty: config.empty, hazardCooldown: config.hazardCooldown });
-  ex = new SemanticExecutor(sim, { aeb: config.aeb });
+  config = { seed: 420000, type: 'town', hazards: [], randomRoute: true, trafficScale: 1, empty: false, aeb: false, obs_schema: '1.1', legacyHazards: false, ...cfg };
+  config.obs_schema = { 1: '1.0', '1': '1.0', 1.1: '1.1' }[config.obs_schema] ?? String(config.obs_schema); // `--set obs_schema=1.0` arrives as a number
+  sim = new InteractionWorld(config.seed, config.type, { randomRoute: config.randomRoute && config.type !== 'highway', hazards: config.hazards, trafficScale: config.trafficScale,
+    empty: config.empty, hazardCooldown: config.hazardCooldown, legacyHazards: config.legacyHazards });
+  ex = new InteractionExecutor(sim, { aeb: config.aeb, obsSchema: config.obs_schema });
   ex.episodeId = config.episode_id ?? `drivejev-${config.type}-${config.seed}`;
   if (leaf) { leaf.dispose(); leaf = null; }
   if (scene) { scene.sim = sim; scene.build(); } else scene = new DriveScene(canvas, sim, document.querySelector('#vector-layer'));
@@ -65,29 +70,35 @@ export async function reset(cfg) {
   await scene.ready;
   // Bootstrap until the first two-frame decision: cruise when moving, hold when stopped.
   ex.select(sim.player.speed >= 0.5 ? 'keep_route_cruise' : 'hold_stop'); ex.policySource = 'local_bootstrap';
-  return { world: WORLD_VERSION, executor: VERSION, route_length_m: sim.player.route.length, crossings: sim.player.route.crossings.map((c) => ({ node: c.nodeId, control: sim.world.byId[c.nodeId].control })) };
+  return { world: WORLD_VERSION, executor: VERSION, obs_schema: config.obs_schema, route_length_m: sim.player.route.length, crossings: sim.player.route.crossings.map((c) => ({ node: c.nodeId, control: sim.world.byId[c.nodeId].control })) };
 }
 
 const post = (url, body) => fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 const requestBody = (cfg, obs, history, shot) => ({
-  arm: cfg.arm, schema_version: 'drivejev-online-1.0', episode_id: ex.episodeId, observation_id: obs.observation_id,
+  arm: cfg.arm, schema_version: 'drivejev-online-1.1', episode_id: ex.episodeId, observation_id: obs.observation_id,
   student_obs: obs.student_obs, candidates: obs.candidates,
   images: [{ camera: 'front', relative_time: -0.5, png_base64: history.wide }, { camera: 'front', relative_time: 0, png_base64: shot.wide }, { camera: 'front_tele', relative_time: 0, png_base64: shot.tele }],
 });
 const stuckStep = () => Math.abs(sim.player.speed) < 0.2 && ex.stepId > 20 && !sim.rule(sim.player).mustStop && !(ex.env().lead && ex.env().lead.gap < 4);
+/** Collision partner's hazard kind (null for ordinary JevPilot traffic). */
+function crashHazard() {
+  if (!sim.crash) return null;
+  const o = [...sim.traffic, ...sim.pedestrians].find((x) => x.id === sim.crash.object_id);
+  return o?.hazard ? (o.hazard.kind ?? 'hazard') : null;
+}
 
 function summary(info, extra) {
   const truth = ex.observe().meta.evaluation_truth;
   return { ...info, config, sim_time_s: sim.time, arrived: sim.complete, crash: sim.crash, collisions: sim.collisions, violations: sim.violations,
     front_red_violations: ex.frontRedViolations, front_required_stop_violations: ex.frontRequiredStopViolations,
     route_completion: Math.min(1, sim.player.s / Math.max(1, sim.player.route.length)), aeb_events: ex.aebEvents, aeb_steps: ex.aebSteps,
-    hard_brake_steps: truth.hard_brake_steps, jerk_rms_mps3: truth.jerk_rms_mps3, hazards: sim.director?.log ?? [], front_events: ex.frontBumperEvents, ...extra };
+    hard_brake_steps: truth.hard_brake_steps, jerk_rms_mps3: truth.jerk_rms_mps3, hazards: sim.director?.log ?? [], crash_hazard: crashHazard(), front_events: ex.frontBumperEvents, ...extra };
 }
 
 export async function runEpisode(cfg) {
   const info = await reset(cfg);
   const policy = cfg.policy ?? 'model', maxTime = cfg.max_time_s ?? 120, frames = [], latencies = [], actions = {}, rejections = {}, trace = [];
-  let decisions = 0, accepted = 0, stuck = 0, speedSum = 0;
+  let decisions = 0, accepted = 0, stuck = 0, stuckClear = 0, speedSum = 0;
   const t0 = performance.now();
   while (sim.time < maxTime && !sim.crash && !sim.complete) {
     if (ex.stepId % 5 === 0) {
@@ -98,8 +109,8 @@ export async function runEpisode(cfg) {
       if (ex.stepId >= 10 && (history || policy !== 'model')) {
         let result;
         if (policy === 'teacher') {
-          const t = referenceTeacher(ex, obs);
-          result = { candidate_id: t.preferred, probabilities: t.probabilities, observation_id: obs.observation_id, model_version: 'reference-teacher' };
+          const t = observableTeacher(ex, obs);
+          result = { candidate_id: t.preferred, probabilities: t.probabilities, observation_id: obs.observation_id, model_version: 'observable-teacher' };
         } else {
           const started = performance.now(), response = await post(cfg.model_url ?? '/predict', requestBody(cfg, obs, history, shot));
           result = await response.json();
@@ -112,13 +123,13 @@ export async function runEpisode(cfg) {
         if (cfg.trace) trace.push({ t: Math.round(sim.time * 100) / 100, v: Math.round(sim.player.speed * 100) / 100, chosen: result.candidate_id, executing: ex.maneuver?.action_type, p: result.probabilities });
       }
     }
-    if (stuckStep()) stuck += DT;
+    if (stuckStep()) { stuck += DT; if (ex.unnecessaryStop()) stuckClear += DT; }
     speedSum += Math.abs(sim.player.speed) * DT;
     if (ex.step(1)) break;
     if (ex.stepId % 200 === 0) await new Promise((r) => setTimeout(r, 0));
   }
   latencies.sort((a, b) => a - b);
-  return summary(info, { policy, mode: 'batch', wall_s: (performance.now() - t0) / 1000, mean_speed_mps: speedSum / Math.max(sim.time, 1e-6), stuck_s: stuck,
+  return summary(info, { policy, mode: 'batch', wall_s: (performance.now() - t0) / 1000, mean_speed_mps: speedSum / Math.max(sim.time, 1e-6), stuck_s: stuck, stuck_clear_s: stuckClear,
     decisions, accepted, rejections, action_counts: actions, latency_ms_p50: latencies[Math.floor(latencies.length / 2)] ?? null, trace: cfg.trace ? trace : undefined });
 }
 

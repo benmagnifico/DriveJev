@@ -85,9 +85,11 @@ def choose(candidate_ids, action_types, probabilities, current_action=None, rule
 
 
 class DrivingPolicy:
-    def __init__(self, encoder: Encoder, heads: dict, default_arm=None, decision_rule="argmax"):
+    def __init__(self, encoder: Encoder, heads: dict, default_arm=None, decision_rule="argmax", observation_schema="1.1"):
         self.encoder, self.heads, self.decision_rule = encoder, heads, decision_rule
         self.default_arm = default_arm or next(iter(heads))
+        # Student observation the head was trained on ("1.0": no junction ETA fields / vehicle occlusion).
+        self.observation_schema = observation_schema
 
     @classmethod
     def from_pretrained(cls, path, device="cuda:0", image_mode="normal", base_model=None):
@@ -102,7 +104,8 @@ class DrivingPolicy:
         backbone = base_model or (str(root / backbone) if (root / backbone).exists() else backbone)
         encoder = Encoder(str(backbone), device=device, image_mode=image_mode)
         head, _ = load_head(root / config.get("head_file", "head.safetensors"), encoder.device)
-        return cls(encoder, {"default": head}, decision_rule=config.get("decision_rule", "argmax"))
+        return cls(encoder, {"default": head}, decision_rule=config.get("decision_rule", "argmax"),
+                   observation_schema=config.get("observation_schema", "1.0"))
 
     @torch.no_grad()
     def predict(self, record, arm=None):

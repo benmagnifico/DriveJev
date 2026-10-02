@@ -32,6 +32,7 @@ def main():
     p.add_argument("--copy-backbone", action="store_true")
     p.add_argument("--base-model-id", default="Qwen/Qwen-Drive-1.0-4B")
     p.add_argument("--decision-rule", default="argmax", choices=["argmax", "group"])
+    p.add_argument("--observation-schema", default="1.1", choices=["1.0", "1.1"], help="student observation the head was trained on")
     args = p.parse_args()
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=False)
@@ -54,7 +55,7 @@ def main():
     config = {"format": "drivejev-hf-v1", "compiler_version": COMPILER_VERSION, "backbone": backbone, "lora_merged": bool(args.lora),
               "head_file": "head.safetensors", "head": saved["head_config"], "decision_rule": args.decision_rule, "temperature": float(saved.get("temperature", 1.0)),
               "cameras": {k: {"label": v[0], "size": list(v[1])} for k, v in CAMERAS.items()}, "image_layout": [list(x) for x in IMAGE_LAYOUT],
-              "behaviours": BEHAVIOURS}
+              "behaviours": BEHAVIOURS, "observation_schema": args.observation_schema}
     (out / "drivejev_config.json").write_text(json.dumps(config, indent=2))
     print(json.dumps({"out": str(out), "backbone": backbone, "head": saved["head_config"]["kind"]}))
 

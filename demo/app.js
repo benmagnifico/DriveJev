@@ -34,7 +34,8 @@ import {
   ScanEye,
   Route,
 } from "/demo/vendor/lucide.js";
-import { DriveWorld, HAZARD_KINDS } from "/simulator/world.mjs";
+import { HAZARD_KINDS } from "/simulator/world.mjs";
+import { InteractionWorld, ALL_KINDS } from "/simulator/interactions.mjs";
 import { BackgroundPlanner } from "/third_party/jevpilot/src/background-planner.js";
 import { DriveScene } from "/third_party/jevpilot/src/scene.js";
 import { MinimapControls } from "/third_party/jevpilot/src/minimap-controls.js";
@@ -69,17 +70,22 @@ const params = new URLSearchParams(location.search),
 let worldKind = THEMES[requested] ? requested : "town";
 // World options: `route=default` keeps JevPilot's default route (otherwise a seeded random route
 // over the grid; the interstate always uses its default route), `hazards=1` enables the scripted
-// hazard scenarios.
+// hazard and interaction scenarios (`hazards=classic`: only the three 1.0 hazards; `hazards=storm`:
+// all of them back to back).
 const routeMode = params.get("route") === "default" ? "default" : "random";
-let hazardsOn = ["1", "on", "true"].includes(params.get("hazards"));
-// The hazard director tries its kinds in rotation and only rotates after a success; a junction
-// runner can never be placed on the interstate, so it is left out there.
-const hazardKinds = (kind) => HAZARD_KINDS.filter((k) => kind !== "highway" || k !== "cross_runner");
-/** Every world is a fresh DriveWorld: its options and hazard agents exist only from construction. */
+const HAZARD_MODES = { 1: "all", on: "all", true: "all", all: "all", classic: "classic", storm: "storm" };
+let hazardMode = HAZARD_MODES[params.get("hazards")] ?? "all";
+let hazardsOn = params.get("hazards") in HAZARD_MODES;
+// The interstate only has neighbour-lane cut-ins (junction scenarios cannot be placed there); the 1.0
+// junction runner is left out on the interstate as before.
+const hazardKinds = (kind) =>
+  hazardMode === "classic" ? HAZARD_KINDS.filter((k) => kind !== "highway" || k !== "cross_runner") : kind === "highway" ? ["cut_in"] : ALL_KINDS;
+/** Every world is a fresh InteractionWorld: its options and hazard agents exist only from construction. */
 function makeWorld(seed, kind) {
-  return new DriveWorld(seed, kind, {
+  return new InteractionWorld(seed, kind, {
     randomRoute: routeMode === "random" && kind !== "highway",
     hazards: hazardsOn ? hazardKinds(kind) : [],
+    hazardCooldown: hazardMode === "storm" ? 4 : hazardMode === "classic" ? 10 : 9,
   });
 }
 let sim = makeWorld(Number(params.get("seed")) || randomSeed(), worldKind);
@@ -126,7 +132,7 @@ $("app").innerHTML = `
 <div id="toast" role="status" hidden></div>
 <div id="sensor-rig" aria-hidden="true"><canvas width="640" height="384"></canvas><div></div></div>
 <dialog id="json-dialog"><div class="json-header"><div>${icon("braces")}<strong>Under the hood</strong><span id="json-live">LIVE · 4 Hz</span></div><button id="close-json" aria-label="Close JSON inspector">${icon("x")}</button></div><div class="json-toolbar"><div class="json-tabs"><button data-tab="request" class="active">Model input</button><button data-tab="sensor">Perception</button><button data-tab="world">Full world</button><button data-tab="decision">Response</button></div><div class="json-actions"><button id="freeze-json">Freeze</button><button id="copy-json" aria-label="Copy displayed JSON">${icon("copy")} <span id="copy-json-label" aria-live="polite">Copy</span></button><button id="download-json">${icon("download")} Download</button></div></div><p id="json-description"></p><pre id="json-content"></pre></dialog>
-<dialog id="help-dialog"><button id="close-help" class="dialog-close" aria-label="Close help">${icon("x")}</button><span class="eyebrow">DRIVEJEV DEMO</span><h2>Take the wheel, or hand it over.</h2><div class="help-keys"><span><kbd>W / ↑</kbd> Accelerate</span><span><kbd>S / ↓</kbd> Brake / reverse</span><span><kbd>A / D</kbd> Steer</span><span><kbd>SPACE</kbd> Brake</span><span><kbd>J</kbd> Engage pilot</span><span><kbd>M</kbd> Choose pilot</span><span><kbd>1–${PILOTS.length}</kbd> Pilot shortcut</span><span><kbd>C</kbd> Camera</span><span><kbd>I</kbd> Decision panel</span><span><kbd>P</kbd> Pause</span></div><p>Drag the scene to orbit in Chase or Bird's eye; drag to look around in Driver view; scroll to zoom; double-click to recenter.</p><p><b>DriveJev</b> sees three frames rendered exactly like its training data — the wide 640×384 front camera now and 0.5 s ago plus a 384×224 tele view (15°) for distant lights and signs — and a small state record (ego, navigation, junction control, lead vehicle, predicted path conflict), then chooses one of up to eight behaviours; the semantic executor steers and sets the speed (with a following gap). The panel shows the actual model input, the probabilities, whether the choice was applied, and a 20 s timeline. <b>Jev</b> and <b>Kev</b> receive JevPilot's structured state and sampled path candidates instead (no camera).</p><p>The pilot menu switches the AEB (collision-mitigation braking from perceived objects; for Jev/Kev, JevPilot's traffic safety envelope) — it never stops for red lights — and the scripted hazard scenarios (jaywalker, red-light/stop runner, hard-braking lead). Probabilities are model scores, not calibrated success rates. Interactive drives are demonstrations, not the evaluation protocol.</p></dialog>`;
+<dialog id="help-dialog"><button id="close-help" class="dialog-close" aria-label="Close help">${icon("x")}</button><span class="eyebrow">DRIVEJEV DEMO</span><h2>Take the wheel, or hand it over.</h2><div class="help-keys"><span><kbd>W / ↑</kbd> Accelerate</span><span><kbd>S / ↓</kbd> Brake / reverse</span><span><kbd>A / D</kbd> Steer</span><span><kbd>SPACE</kbd> Brake</span><span><kbd>J</kbd> Engage pilot</span><span><kbd>M</kbd> Choose pilot</span><span><kbd>1–${PILOTS.length}</kbd> Pilot shortcut</span><span><kbd>C</kbd> Camera</span><span><kbd>I</kbd> Decision panel</span><span><kbd>P</kbd> Pause</span></div><p>Drag the scene to orbit in Chase or Bird's eye; drag to look around in Driver view; scroll to zoom; double-click to recenter.</p><p><b>DriveJev</b> sees three frames rendered exactly like its training data — the wide 640×384 front camera now and 0.5 s ago plus a 384×224 tele view (15°) for distant lights and signs — and a small state record (ego, navigation, junction control, lead vehicle, predicted path conflict), then chooses one of up to eight behaviours; the semantic executor steers and sets the speed (with a following gap). The panel shows the actual model input, the probabilities, whether the choice was applied, and a 20 s timeline. <b>Jev</b> and <b>Kev</b> receive JevPilot's structured state and sampled path candidates instead (no camera).</p><p>The pilot menu switches the AEB (collision-mitigation braking from perceived objects; for Jev/Kev, JevPilot's traffic safety envelope) — it never stops for red lights — and the scripted hazard and interaction scenarios (jaywalker, red-light/stop runner, hard-braking lead; oncoming platoons during a left turn, 4-way-stop contention, a red-light runner just after your green, a pedestrian hidden behind a parked car, cut-ins, pedestrians at the turn). Probabilities are model scores, not calibrated success rates. Interactive drives are demonstrations, not the evaluation protocol.</p></dialog>`;
 $("app").insertAdjacentHTML(
   "beforeend",
   `<div id="touch-controls" class="touch-controls" role="group" aria-label="Touch driving controls" hidden>
@@ -198,7 +204,7 @@ const runtime = new SemanticRuntime({
 
 const planner = new BackgroundPlanner();
 sim.backgroundPlanning = true;
-/** Swap in a freshly constructed DriveWorld (resetWorld); every holder of the old one is rebound. */
+/** Swap in a freshly constructed InteractionWorld (resetWorld); every holder of the old one is rebound. */
 function installWorld(next) {
   sim = next;
   sim.backgroundPlanning = true;
@@ -293,7 +299,7 @@ function renderPilotMenu() {
     isSemantic(pilot)
       ? "AEB (collision-mitigation braking) <small>(perceived objects · never brakes for red lights)</small>"
       : "Safety brake for traffic collisions <small>(never brakes for red lights)</small>"
-  }</label><label class="pilot-menu-safety"><input type="checkbox" id="hazard-toggle" ${hazardsOn ? "checked" : ""}/> Hazard scenarios <small>(jaywalker · junction runner · braking lead · resets the world)</small></label>`;
+  }</label><label class="pilot-menu-safety"><input type="checkbox" id="hazard-toggle" ${hazardsOn ? "checked" : ""}/> Hazard &amp; interaction scenarios <small>(${hazardMode === "classic" ? "jaywalker · junction runner · braking lead" : "oncoming platoons · 4-way stops · red-light runners · hidden pedestrians · cut-ins · …"} · resets the world)</small></label>`;
   createIcons({ icons, root: $("pilot-menu") });
   for (const button of $("pilot-menu").querySelectorAll("[data-pilot]"))
     button.onclick = () => {
@@ -348,7 +354,7 @@ function setHazards(on) {
   history.replaceState(null, "", url);
   closePilotMenu();
   Promise.resolve(resetWorld(sim.world.seed, worldKind)).then(() =>
-    toast(hazardsOn ? "Hazard scenarios on · a jaywalker, junction runner or braking lead at most every 10–18 s" : "Hazard scenarios off"),
+    toast(hazardsOn ? (hazardMode === "classic" ? "Hazard scenarios on · a jaywalker, junction runner or braking lead at most every 10–18 s" : "Hazard & interaction scenarios on · nine kinds, one at most every 9–16 s") : "Hazard scenarios off"),
   );
 }
 function refreshWorld() {
@@ -404,7 +410,7 @@ async function setPilot(on) {
     const token = generation;
     let ready = false;
     try {
-      ready = await runtime.engage(sim, pilot, { aeb: safetyBrake });
+      ready = await runtime.engage(sim, pilot, { aeb: safetyBrake, obsSchema: backends.drivejev?.arms?.[pilot.arm]?.observation_schema ?? "1.1" });
     } catch (error) {
       toast(error.message, "error");
     }
@@ -965,6 +971,12 @@ const HAZARD_TEXT = {
   jaywalker: (e) => `a pedestrian will step out from the ${e.from} ${Math.round(e.at_s - e.ego_s)} m ahead`,
   cross_runner: (e) => `a car will run the ${e.control === "signal" ? "red light" : e.control === "stop" ? "stop sign" : "junction"} ahead`,
   lead_brake: (e) => `a car pulls in ${Math.round(e.gap)} m ahead and will brake hard`,
+  oncoming: (e) => (e.variant === "platoon" ? `${e.cars} oncoming cars with right of way while you turn left` : "an oncoming car will turn left across your path"),
+  stop_contention: (e) => `${e.cars.length} more car${e.cars.length > 1 ? "s" : ""} arriving at the 4-way stop`,
+  green_runner: () => "a cross car will run its red just after your light turns green",
+  occluded_ped: () => "a pedestrian is hidden behind a parked car ahead",
+  cut_in: (e) => (e.highway ? "a car will cut in from the next lane" : `a parked car will pull out ${Math.round(e.gap)} m ahead`) + (e.brake ? " and brake" : ""),
+  turn_ped: (e) => `${e.peds.length} pedestrian${e.peds.length > 1 ? "s" : ""} crossing the road you turn into`,
 };
 function hazardActivations() {
   return (sim.director?.log ?? []).filter((e) => !e.event);
@@ -977,14 +989,22 @@ function announceHazards() {
   hazardSeen = activations.length;
   toast(`Hazard · ${HAZARD_TEXT[e.kind]?.(e) ?? e.kind}`);
 }
+const PED_TEXT = { jaywalker: "jaywalker", occluded_ped: "hidden pedestrian", turn_ped: "pedestrian at the turn" };
 function activeHazard() {
   const v = sim.player,
-    ped = sim.hazardPeds?.find((p) => ["waiting", "walking"].includes(p.hazard?.state));
-  if (ped) return `jaywalker ${ped.hazard.state === "walking" ? "crossing" : "waiting at the kerb"} · ${Math.round(dist(ped, v))} m`;
-  const car = sim.hazardCars?.find((c) => c.hazard?.state === "active");
+    ped = sim.hazardPeds?.find((p) => ["staged", "waiting", "walking"].includes(p.hazard?.state));
+  if (ped) return `${PED_TEXT[ped.hazard.kind] ?? "pedestrian"} ${ped.hazard.state === "walking" ? "crossing" : "waiting"} · ${Math.round(dist(ped, v))} m`;
+  const car = sim.hazardCars?.filter((c) => c.hazard?.state === "active" && !c.hazard.static).sort((a, b) => dist(a, v) - dist(b, v))[0];
   if (!car) return null;
-  const h = car.hazard,
-    what = h.kind === "cross_runner" ? `${h.control === "signal" ? "red-light" : h.control === "stop" ? "stop-sign" : "junction"} runner` : h.kind === "lead_brake" ? (h.brakeActive ? "lead car braking hard" : "lead car (will brake)") : "lead car resumed";
+  const h = car.hazard;
+  const what =
+    h.kind === "cross_runner" ? `${h.control === "signal" ? "red-light" : h.control === "stop" ? "stop-sign" : "junction"} runner`
+    : h.kind === "lead_brake" ? (h.brakeActive ? "lead car braking hard" : "lead car (will brake)")
+    : h.kind === "oncoming" ? (h.variant === "left_turner" ? "oncoming left-turner" : "oncoming car (right of way)")
+    : h.kind === "stop_contention" ? "car at the 4-way stop"
+    : h.kind === "green_runner" ? "late red-light runner"
+    : h.kind === "cut_in" ? (h.capActive ? "cut-in car braking" : "cut-in car")
+    : "lead car resumed";
   return `${what} · ${Math.round(dist(car, v))} m`;
 }
 // Idle preview: show what the DriveJev cameras would see before the pilot is engaged.

@@ -7,8 +7,11 @@ pedestrians, traffic lights and stop signs. JevPilot is used unmodified (git sub
 
 | File | Role |
 |---|---|
-| `simulator/world.mjs` | `World` = JevPilot `Simulation` + seeded random routes over the whole grid, pre-allocated hazard agents and a `HazardDirector`, and a dynamic-state `clone()` used by the reference teacher |
-| `simulator/executor.mjs` | Semantic executor (candidate generation, lane keeping, speed profiles, ACC, optional AEB), the student observation, evaluation counters, and the privileged reference teacher |
+| `simulator/world.mjs` | `DriveWorld` = JevPilot `Simulation` + seeded random routes over the whole grid, pre-allocated hazard agents and a `HazardDirector`, and a dynamic-state `clone()` used by the teachers |
+| `simulator/interactions.mjs` | 1.1: `InteractionWorld` (larger agent pool) and `InteractionDirector` with the six multi-agent interaction scenarios ([scenarios](scenarios.md)) |
+| `simulator/executor.mjs` | Semantic executor (candidate generation, lane keeping, speed profiles, ACC, optional AEB), the student observation, evaluation counters, and the 1.0 reference teacher |
+| `simulator/interaction_executor.mjs` | 1.1: `InteractionExecutor` (vehicle-occlusion perception, junction ETA fields, `obsSchema: '1.0' \| '1.1'`) and the observable teacher |
+| `simulator/preflight.mjs` | drops suite seeds whose initial state already overlaps an NPC |
 | `simulator/harness.mjs` | Browser page: model cameras (wide + tele), batch and real-time closed loops |
 | `simulator/run.mjs` | Node runner: static server, model proxy, N headless Chrome workers, `episodes.jsonl` |
 
@@ -74,7 +77,8 @@ Only these fields are serialized (the compiler rejects anything else, so simulat
   "traffic": {
     "lead": {"gap_m", "speed_mps"} | null,
     "hazard": {"type", "in_s", "distance_m", "side"} | null,
-    "junction": {"vehicles_inside", "cross_approaching", "pedestrians_crossing", "earlier_arrivals"} | null
+    "junction": {"vehicles_inside", "cross_approaching", "pedestrians_crossing", "earlier_arrivals",
+                 "oncoming_eta_s", "cross_eta_s"} | null
   }
 }
 ```
@@ -82,11 +86,37 @@ Only these fields are serialized (the compiler rejects anything else, so simulat
 * `junction_control` is static map information; `stop_completed` and `stationary_s` are the ego car's own memory.
 * `traffic.*` is computed only from objects reported by JevPilot's sensor scan (range ≥ 80 m, 360°, occluded by
   buildings). Other vehicles' planned routes are removed before prediction (constant-velocity extrapolation).
+* 1.1 perception also lets **vehicles occlude**: a pedestrian is hidden when the line of sight from the camera passes
+  through a car's footprint, a vehicle when its centre and both ends are hidden; anything within 6 m is always
+  perceived. A pedestrian behind a parked car is therefore missing from the state exactly as long as it is hidden
+  in the images.
+* 1.1 adds `oncoming_eta_s` / `cross_eta_s`: the time until the nearest perceived oncoming / crossing vehicle that is
+  closing on the junction reaches the junction box (constant velocity; `null` beyond 12 s). 1.0 heads are served
+  with `obsSchema: '1.0'`, which reproduces the 1.0 observation exactly (no ETA fields, building occlusion only).
 * **Signal colours are not in the observation** – the model has to see them.
 
-## Reference teacher (privileged)
+## Teachers (privileged)
 
-`teacher(executor)` reads JevPilot's rule state (signal phase, stop-sign service, junction reservations, first
+### Observable teacher (1.1)
+
+`observableTeacher(executor)` is the 1.0 reference teacher below with four changes, each found while building the
+interaction scenarios:
+
+1. **Only what the student could have seen.** A rollout contains only road users that the 1.1 perception reported
+   in the last second (or that are within 8 m), so a label never reacts to a car hidden behind a building or a
+   pedestrian still hidden behind a parked car.
+2. **Gap acceptance with a time margin.** A behaviour is safe only if the ego never enters the zone a moving vehicle
+   will cover in the next 0.6 s (its footprint stretched forward), unless that vehicle is following the ego. The 1.0
+   rule (0.25 m footprint clearance) accepted left turns 0.1 s in front of oncoming cars.
+3. **Only rear-end contacts are excused.** 1.0 excused every contact at ego speed ≤ 0.4 m/s, which allowed waiting
+   inside an oncoming lane.
+4. **No braking into a near miss.** If every stopping behaviour collides while continuing only lacks margin, the
+   teacher continues; if everything collides it minimises the impact speed. The horizon is 4.5 s (gap acceptance
+   from standstill needs more than 3.5 s).
+
+### Reference teacher (1.0)
+
+`referenceTeacher(executor)` reads JevPilot's rule state (signal phase, stop-sign service, junction reservations, first
 arrival) and rolls the **whole world** forward 3.5 s for each candidate on a dynamic-state clone, so NPCs react to
 the ego as they would in reality. Pending hazard triggers that the ego could not yet observe stay frozen inside
 the rollout. It picks the most progressive behaviour that is safe (no at-fault contact, clearance > 0.25 m) and

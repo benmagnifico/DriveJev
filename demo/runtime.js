@@ -3,15 +3,16 @@
 // The model sees exactly what the closed-loop harness (simulator/harness.mjs) gives it: two wide
 // 640x384 front frames (t-0.5 s, t) and one 384x224 tele frame (t), rendered from a second,
 // training-profile scene, plus the whitelisted student observation and the offered behaviours.
-// The semantic executor (simulator/executor.mjs) turns the accepted behaviour into steering and
-// speed. Loop: fixed 0.05 s physics, capture every 5 steps (4 Hz), history frame exactly 10 steps
+// The semantic executor (simulator/interaction_executor.mjs: the 1.0 executor with vehicle-occlusion
+// perception) turns the accepted behaviour into steering and speed. Loop: fixed 0.05 s physics, capture every 5 steps (4 Hz), history frame exactly 10 steps
 // back, at most one request in flight, an answer is applied only if its observation is <= 0.5 s old.
 import * as THREE from "three";
 import { DriveScene } from "/third_party/jevpilot/src/scene.js";
 import { renderProfile } from "/third_party/jevpilot/src/render-profile.js";
 import { clamp, nearestOnPath } from "/third_party/jevpilot/src/math.js";
 import { maneuverSteering, physics } from "/third_party/jevpilot/src/planning.js";
-import { SemanticExecutor, referenceTeacher, maneuverTarget, DT } from "/simulator/executor.mjs";
+import { maneuverTarget, DT } from "/simulator/executor.mjs";
+import { InteractionExecutor, observableTeacher } from "/simulator/interaction_executor.mjs";
 
 // simulator/harness.mjs CAMERA and render profile.
 export const CAMERA = Object.freeze({
@@ -23,7 +24,7 @@ export const STEPS_PER_CAPTURE = 5; // 20 Hz physics, 4 Hz camera + decisions
 export const HISTORY_STEPS = 10; // t-0.5 s
 export const MAX_OBSERVATION_AGE_S = 0.5;
 export const STALL_MS = 2500;
-export const SCHEMA_VERSION = "drivejev-online-1.0";
+export const SCHEMA_VERSION = "drivejev-online-1.1";
 
 export const PILOTS = [
   {
@@ -43,7 +44,7 @@ export const PILOTS = [
     short: "Teacher",
     tag: "Privileged",
     icon: "route",
-    detail: "Reads the true signal / stop rule and rolls the whole world forward 3.5 s for each offered behaviour. No camera.",
+    detail: "Reads the true signal / stop rule and rolls the world forward 4.5 s for each offered behaviour, with only the road users its sensors have seen. No camera.",
   },
   {
     id: "kev",
@@ -169,13 +170,13 @@ export class SensorRig {
 }
 
 /**
- * SemanticExecutor driven by the display loop. advance() is always exactly one fixed 0.05 s
+ * InteractionExecutor driven by the display loop. advance() is always exactly one fixed 0.05 s
  * step: student_obs numbers are prompt text, so variable steps would feed the model values it
  * never saw. The stall watchdog only zeroes the ego target while no answer has arrived.
  */
-export class DemoExecutor extends SemanticExecutor {
-  constructor(sim, { aeb }) {
-    super(sim, { aeb });
+export class DemoExecutor extends InteractionExecutor {
+  constructor(sim, { aeb, obsSchema = "1.1" }) {
+    super(sim, { aeb, obsSchema });
     this.stalled = false;
     // Harness episodes start at t = 0; the demo attaches to a running world, so the ego
     // stationary clock starts at engagement.
@@ -253,7 +254,8 @@ export class SemanticRuntime {
   get active() {
     return !!this.executor;
   }
-  async engage(sim, pilot, { aeb }) {
+  // obsSchema: the student observation the served head was trained on ("1.0" heads see the 1.0 fields only).
+  async engage(sim, pilot, { aeb, obsSchema }) {
     this.disengage();
     this.sim = sim;
     this.pilot = pilot;
@@ -263,7 +265,7 @@ export class SemanticRuntime {
       await this.sensor.bind(sim);
       if (generation !== this.generation) return false;
     }
-    this.executor = new DemoExecutor(sim, { aeb });
+    this.executor = new DemoExecutor(sim, { aeb, obsSchema });
     this.executor.episodeId = `demo-${pilot.id}-${sim.world.type}-${sim.world.seed}-${Date.now().toString(36)}`;
     // Bootstrap until the first decision, as in the harness: cruise when moving, hold when stopped.
     this.executor.select(sim.player.speed >= 0.5 ? "keep_route_cruise" : "hold_stop");
@@ -339,14 +341,14 @@ export class SemanticRuntime {
   teach(row) {
     const executor = this.executor,
       started = performance.now();
-    const t = referenceTeacher(executor, row);
+    const t = observableTeacher(executor, row);
     const elapsed = performance.now() - started;
     this.stats.teacher_ms.push(elapsed);
     if (this.stats.teacher_ms.length > 40) this.stats.teacher_ms.shift();
     const result = {
       candidate_id: t.preferred,
       probabilities: t.probabilities,
-      model_version: "reference-teacher",
+      model_version: "observable-teacher",
       episode_id: executor.episodeId,
       observation_id: row.observation_id,
       confidence: { value: Math.max(...Object.values(t.probabilities)) },

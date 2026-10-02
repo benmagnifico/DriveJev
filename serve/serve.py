@@ -28,6 +28,7 @@ def main():
     p.add_argument("--model", help="released DriveJev folder or Hugging Face repo id")
     p.add_argument("--backbone", help="Qwen-Drive-1.0 checkpoint (with --head)")
     p.add_argument("--head", action="append", default=[], help="arm=path/to/head.pt|head.safetensors")
+    p.add_argument("--schema", action="append", default=[], help="arm=1.0|1.1: observation schema the arm was trained on (default 1.1)")
     p.add_argument("--image-mode", default="normal", choices=["normal", "blank", "no_tele"])
     p.add_argument("--decision-rule", default=None, choices=["argmax", "group"], help="override the decision rule")
     p.add_argument("--log", default=None, help="optional JSONL request log (fresh file)")
@@ -37,7 +38,7 @@ def main():
         policy = DrivingPolicy.from_pretrained(args.model, image_mode=args.image_mode)
         policy.decision_rule = args.decision_rule or policy.decision_rule
         heads = policy.heads
-        info["default"] = {"path": args.model, "sha256": args.model}
+        info["default"] = {"path": args.model, "sha256": args.model, "observation_schema": policy.observation_schema}
     else:
         if not (args.backbone and args.head):
             raise SystemExit("give --model, or --backbone with at least one --head")
@@ -46,12 +47,15 @@ def main():
             arm, path = spec.split("=", 1) if "=" in spec else ("default", spec)
             head, _ = load_head(path, encoder.device)
             heads[arm] = head
-            info[arm] = {"path": path, "sha256": hashlib.sha256(Path(path).read_bytes()).hexdigest(), "head": head.config}
+            info[arm] = {"path": path, "sha256": hashlib.sha256(Path(path).read_bytes()).hexdigest(), "head": head.config, "observation_schema": "1.1"}
         policy = DrivingPolicy(encoder, heads, decision_rule=args.decision_rule or "argmax")
+    for spec in args.schema:  # clients (harness, demo) build the observation the arm expects
+        arm, schema = spec.split("=", 1)
+        info[arm]["observation_schema"] = schema
     lock = threading.Lock()
     log = open(args.log, "x") if args.log else None
     counters = {"requests": 0, "failed": 0}
-    meta = {"status": "ready", "schema": "drivejev-online-1.0", "image_mode": args.image_mode, "decision_rule": policy.decision_rule, "arms": info}
+    meta = {"status": "ready", "schema": "drivejev-online-1.1", "image_mode": args.image_mode, "decision_rule": policy.decision_rule, "arms": info}
 
     class Handler(BaseHTTPRequestHandler):
         def reply(self, status, value):

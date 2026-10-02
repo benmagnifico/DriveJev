@@ -102,7 +102,7 @@ export class DecisionPanel {
     this.$("dp-input-meta").textContent = camera
       ? "wide 640×384 t, t−0.5 s · tele 384×224 t"
       : teacher
-        ? "true rule + 3.5 s world rollouts, no camera"
+        ? "true rule + 4.5 s rollouts of perceived road users, no camera"
         : "no camera";
     this.reset();
   }
@@ -169,7 +169,7 @@ export class DecisionPanel {
       [
         "junction box",
         junction
-          ? `${junction.vehicles_inside} inside · ${junction.cross_approaching} approaching · ${junction.pedestrians_crossing} peds${nav.junction_control === "stop" ? ` · ${junction.earlier_arrivals} arrived first` : ""}`
+          ? `${junction.vehicles_inside} inside · ${junction.cross_approaching} approaching · ${junction.pedestrians_crossing} peds${nav.junction_control === "stop" ? ` · ${junction.earlier_arrivals} arrived first` : ""}${junction.oncoming_eta_s != null ? ` · oncoming in ${junction.oncoming_eta_s} s` : ""}${junction.cross_eta_s != null ? ` · crossing in ${junction.cross_eta_s} s` : ""}`
           : "—",
       ],
     ];
