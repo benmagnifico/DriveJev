@@ -78,6 +78,7 @@ hazards) show what one extra decision of delay costs when hazards come back to b
 | h5b: + DAgger round 1 (epoch by accuracy) | 15/24 | 3 | 11 | 92% | 7.3 |
 | h5b-loss: same data, epoch by loss | 16/24 | 3 | 8 | 93% | 4.2 |
 | h5c: + DAgger round 2 | 19/24 | 2 | 5 | 98% | 2.3 |
+| h5c + LoRA r16 | 11/24 | 11 | 3 | 76% | 0.2 |
 
 * **h5a**: the 1.0 data plus 164 teacher-driven interaction episodes (half with 5 % of decision slots perturbed for 1 s).
 * **h5a-cw**: the same data with decisions that the teacher changed because of a predicted interaction conflict
@@ -89,6 +90,9 @@ hazards) show what one extra decision of delay costs when hazards come back to b
 * **h5c (released)**: + DAgger round 2 (h5b drives 70 training episodes, 24 of them focused on oncoming platoons,
   red-light runners and cut-ins), conflict weighting, loss-based epoch. 119 k labels in total.
 * Rule fixed before the comparison: most successes, then fewest collisions + violations, then the later round.
+* **h5c + LoRA r16**: language-layer LoRA (rank 16) trained end to end from the h5c head on 9 k interaction decisions (0.9 h);
+  to be adopted only if strictly better than h5c on validation. It was much worse (oncoming platoons 6/8 activations ended in a
+  collision), so the released 1.1 model keeps the backbone frozen; it was not run on the test suite.
 
 ### Reference policies
 
