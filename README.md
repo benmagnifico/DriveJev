@@ -213,8 +213,8 @@ If you find DriveJev helpful, please cite it.
 
 ```bibtex
 @misc{li2026drivejev,
-  title  = {DriveJev: Choosing Executable Driving Behaviours with a Vision-Language Decision Model},
-  author = {Jingguang Li},
+  title  = {DriveJev: Real-Time Driving Behaviour Selection with a Vision-Language Decision Model},
+  author = {Jingguang Li, Kailang Ma, Zuyi Guo, Heye Huang},
   year   = {2026},
   howpublished = {\url{https://github.com/benmagnifico/DriveJev}}
 }
