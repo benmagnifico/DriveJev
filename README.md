@@ -8,6 +8,10 @@
   <a href="docs/evaluation.md">Evaluation</a>
 </p>
 
+<p align="center">
+  <a href="https://doi.org/10.5281/zenodo.23118991"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.23118991.svg" alt="DOI 10.5281/zenodo.23118991"></a>
+</p>
+
 
 <table>
   <tr>
@@ -209,13 +213,14 @@ DriveJev builds on [Qwen-Drive-1.0](https://huggingface.co/Qwen/Qwen-Drive-1.0-4
 
 ## Citation
 
-If you find DriveJev helpful, please cite it.
+If you find DriveJev helpful, please cite it. The code is archived on Zenodo; the DOI [10.5281/zenodo.23118991](https://doi.org/10.5281/zenodo.23118991) covers all versions and always resolves to the latest one.
 
 ```bibtex
 @misc{li2026drivejev,
   title  = {DriveJev: Real-Time Driving Behaviour Selection with a Vision-Language Decision Model},
   author = {Jingguang Li and Kailang Ma and Zuyi Guo and Yebo Wu and Heye Huang},
   year   = {2026},
+  doi    = {10.5281/zenodo.23118991},
   howpublished = {\url{https://github.com/benmagnifico/DriveJev}}
 }
 ```

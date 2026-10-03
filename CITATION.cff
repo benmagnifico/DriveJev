@@ -1,6 +1,16 @@
 cff-version: 1.2.0
 message: "If you find DriveJev helpful, please cite it as below."
 type: software
+doi: 10.5281/zenodo.23118991
+version: 1.0.1
+date-released: "2026-10-03"
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.23118991
+    description: "All versions of DriveJev; always resolves to the latest version."
+  - type: doi
+    value: 10.5281/zenodo.23118992
+    description: "DriveJev 1.0.1"
 title: "DriveJev: Real-Time Driving Behaviour Selection with a Vision-Language Decision Model"
 authors:
   - given-names: Jingguang
