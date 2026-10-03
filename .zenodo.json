@@ -1,0 +1,44 @@
+{
+  "title": "DriveJev: Real-Time Driving Behaviour Selection with a Vision-Language Decision Model",
+  "upload_type": "software",
+  "access_right": "open",
+  "license": "mit",
+  "language": "eng",
+  "creators": [
+    {"name": "Li, Jingguang"},
+    {"name": "Ma, Kailang"},
+    {"name": "Guo, Zuyi"},
+    {"name": "Huang, Heye"}
+  ],
+  "description": "<p>DriveJev is an open-source, efficient System I decision model for autonomous driving. At every decision it looks at three camera frames and a short description of the situation, scores the behaviours the car can carry out at that instant (cruise, stop at the line, hold, start, turn, yield, brake) and returns a probability for each in one forward pass. A local executor turns the chosen behaviour into steering and speed. DriveJev drives closed loop in the JevPilot town, city and interstate with traffic, pedestrians, traffic lights, stop signs and scripted multi-agent interactions.</p><p>On held-out closed-loop tests DriveJev 1.0 reaches the destination with no collision and no violation in 28 of 35 interaction episodes and 25 of 28 base episodes, meets 241 of 242 scripted hazards without contact and makes a decision in 111 ms on one GPU.</p><p>This archive holds the DriveJev code: prompt compiler, image patching, decision head and driving policy, the HTTP model service, the JevPilot closed-loop harness with hazard and interaction scenarios, the test suites and summarizer, the interactive demo and the documentation. The model weights are on Hugging Face at <a href=\"https://huggingface.co/benmagnifico/DriveJev-4B\">benmagnifico/DriveJev-4B</a> (tag v1.0). JevPilot is a git submodule and is not included in this archive; it is available at <a href=\"https://github.com/standardagents/jevpilot\">standardagents/jevpilot</a> (commit e1beeb13b9a928fb76f167f86af584f4ce9cf180 is the one used here).</p>",
+  "keywords": [
+    "autonomous driving",
+    "vision-language model",
+    "decision model",
+    "closed-loop evaluation",
+    "imitation learning",
+    "JevPilot"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://huggingface.co/benmagnifico/DriveJev-4B",
+      "relation": "isSupplementedBy",
+      "resource_type": "other"
+    },
+    {
+      "identifier": "https://github.com/standardagents/jevpilot",
+      "relation": "requires",
+      "resource_type": "software"
+    },
+    {
+      "identifier": "https://huggingface.co/Qwen/Qwen-Drive-1.0-4B",
+      "relation": "references",
+      "resource_type": "other"
+    },
+    {
+      "identifier": "https://github.com/jaredpalmer/kev",
+      "relation": "references",
+      "resource_type": "software"
+    }
+  ]
+}

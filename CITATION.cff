@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+message: "If you find DriveJev helpful, please cite it as below."
+type: software
+title: "DriveJev: Real-Time Driving Behaviour Selection with a Vision-Language Decision Model"
+authors:
+  - given-names: Jingguang
+    family-names: Li
+  - given-names: Kailang
+    family-names: Ma
+  - given-names: Zuyi
+    family-names: Guo
+  - given-names: Heye
+    family-names: Huang
+abstract: >-
+  DriveJev is an open-source, efficient System I decision model for autonomous
+  driving. At every decision it looks at three camera frames and a short
+  description of the situation, scores the behaviours the car can carry out at
+  that instant and returns a probability for each in one forward pass. A local
+  executor turns the chosen behaviour into steering and speed in the JevPilot
+  closed-loop driving world.
+repository-code: "https://github.com/benmagnifico/DriveJev"
+url: "https://huggingface.co/benmagnifico/DriveJev-4B"
+license: MIT
+keywords:
+  - autonomous driving
+  - vision-language model
+  - decision model
+  - closed-loop evaluation
+  - imitation learning
+  - JevPilot
